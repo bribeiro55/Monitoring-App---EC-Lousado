@@ -8,6 +8,7 @@ import pandas as pd
 from dash import Input, Output, State, dcc, html, callback_context
 from dash.exceptions import PreventUpdate
 
+from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .services import CAM_DEFS, _build_effective_elapsed_seconds, _camera_health, _format_frozen_period, _thermo_col, collect_frozen_periods
 
 
@@ -29,10 +30,8 @@ def register_otkph_table_callbacks(
     app,
     *,
     step_colors: Dict[int, str],
-    rows_to_df: Callable,
     find_log_path: Callable,
     cached_parse: Callable,
-    serialize_df_rows: Callable,
 ) -> None:
     @app.callback(
         Output("otkph-frozen-visible-count-store", "data"),

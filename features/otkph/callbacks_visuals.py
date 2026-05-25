@@ -7,7 +7,8 @@ import pandas as pd
 from dash import ALL, Input, Output, State, callback_context, dcc, html
 from dash.exceptions import PreventUpdate
 
-from analysis_tab import LIMIT_PALETTE
+from config import LIMIT_PALETTE
+from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .figures import (
     _blank_fig,
     _compute_max_delta,
@@ -28,10 +29,8 @@ def register_otkph_visual_callbacks(
     app,
     *,
     step_colors: Dict[int, str],
-    rows_to_df: Callable,
     find_log_path: Callable,
     cached_parse: Callable,
-    serialize_df_rows: Callable,
 ) -> None:
     @app.callback(
         Output("otkph-thresholds-store", "data"),

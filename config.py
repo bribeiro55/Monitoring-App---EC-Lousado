@@ -76,3 +76,20 @@ STEP_BORDER_COLORS = {
     8: "rgba(220,80,80,0.45)",
     9: "rgba(80,200,200,0.45)",
 }
+
+COMPARE_PALETTE = [
+    "#F0BA20",
+    "#E8721A",
+    "#4A90D9",
+    "#34C47C",
+    "#B36EE8",
+    "#E84040",
+    "#60C4C4",
+    "#A0C030",
+    "#E870A0",
+]
+
+LIMIT_PALETTE = ["#E84040", "#4A90D9", "#34C47C", "#E8721A", "#B36EE8"]
+
+BAND_UPPER_LINE_COLOR = LIMIT_PALETTE[0]
+BAND_LOWER_LINE_COLOR = LIMIT_PALETTE[1]

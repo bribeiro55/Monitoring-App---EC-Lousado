@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Optional
 import pandas as pd
 from dash import Input, Output, State, callback_context
 
+from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .services import (
     _apply_ignore_interrupted_rows,
     _apply_otkph_data_filters,
@@ -18,10 +19,8 @@ def register_otkph_filter_callbacks(
     app,
     *,
     step_colors: Dict[int, str],
-    rows_to_df: Callable[[List[dict]], pd.DataFrame],
     find_log_path: Callable[[str], Optional[str]],
     cached_parse: Callable[[str], pd.DataFrame],
-    serialize_df_rows: Callable[[pd.DataFrame], List[dict]],
 ) -> None:
     @app.callback(
         Output("otkph-test-warning", "children"),

@@ -9,12 +9,13 @@ from dash import Input, Output, State, dcc
 from dash.exceptions import PreventUpdate
 
 from features.analysis.services import apply_single_test_analysis_filters
+from features.monitor.data import _rows_to_df, _apply_chart_filters
 
 
 def register_analysis_export_callbacks(app, deps: dict) -> None:
     variable_config = deps["VARIABLE_CONFIG"]
-    rows_to_df = deps["_rows_to_df"]
-    apply_chart_filters = deps["_apply_chart_filters"]
+    rows_to_df = _rows_to_df
+    apply_chart_filters = _apply_chart_filters
 
     @app.callback(
         Output("analysis-csv-download", "data"),

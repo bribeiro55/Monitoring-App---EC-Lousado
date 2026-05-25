@@ -6,6 +6,7 @@ import pandas as pd
 from dash import ALL, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
 
+from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .services import CAM_DEFS, _camera_health, _thermo_col
 
 
@@ -33,10 +34,8 @@ def register_otkph_selection_callbacks(
     app,
     *,
     step_colors: Dict[int, str],
-    rows_to_df: Callable,
     find_log_path: Callable,
     cached_parse: Callable,
-    serialize_df_rows: Callable,
 ) -> None:
     @app.callback(
         Output("otkph-active-cameras-store", "data", allow_duplicate=True),

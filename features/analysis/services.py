@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from config import VARIABLE_CONFIG
+from features.monitor.data import _rows_to_df as rows_to_df, _apply_chart_filters as apply_chart_filters
 
 ANALYSIS_FILTER_VARIABLE_OPTIONS = [
     {"label": cfg["label"], "value": key} for key, cfg in VARIABLE_CONFIG.items()
@@ -201,8 +202,6 @@ def build_analysis_test_frames(
     data_filters: Optional[dict],
     variable_config: dict,
     compare_palette: list[str],
-    rows_to_df,
-    apply_chart_filters,
 ) -> Tuple[List[Tuple[str, pd.DataFrame, str]], dict, str, str]:
     tests = list(tests or [])
     data = dict(data or {})
@@ -230,3 +229,79 @@ def build_analysis_test_frames(
             continue
         test_frames.append((f"Test {tn}", dff, color))
     return test_frames, var_cfg, value_col, var_key
+
+
+def summary_status_for_band(
+    max_val: float,
+    min_val: float,
+    upper: Optional[float],
+    lower: Optional[float],
+) -> Tuple[str, str]:
+    if upper is None and lower is None:
+        return "OK", "badge-ok"
+    bad = False
+    if upper is not None and max_val > upper:
+        bad = True
+    if lower is not None and min_val < lower:
+        bad = True
+    if bad:
+        return "WARN", "badge-warn"
+    return "OK", "badge-ok"
+
+
+def collect_band_crossing_violations(
+    test_frames: List[Tuple[str, pd.DataFrame, str]],
+    *,
+    value_col: str,
+    upper: Optional[float],
+    lower: Optional[float],
+) -> List[dict]:
+    if upper is None and lower is None:
+        return []
+    rows: List[dict] = []
+    for label, dff, color in test_frames:
+        if dff.empty or value_col not in dff.columns:
+            continue
+        d_sorted = dff.sort_values("timestamp").reset_index(drop=True)
+        vals = pd.to_numeric(d_sorted[value_col], errors="coerce")
+        valid = vals.notna()
+        outside_upper = (vals > upper) if upper is not None else pd.Series(False, index=vals.index)
+        outside_lower = (vals < lower) if lower is not None else pd.Series(False, index=vals.index)
+        outside = outside_upper | outside_lower
+        cur_in = (~outside).where(valid, np.nan)
+        prev_in = cur_in.ffill().shift(1).fillna(True).astype(bool)
+        crossings = valid & outside & prev_in
+        for i in np.flatnonzero(crossings.to_numpy()):
+            val = float(vals.iloc[i])
+            if not np.isfinite(val):
+                continue
+            if upper is not None and val > upper:
+                kind = "upper"
+                lim_disp = float(upper)
+                lim_label = "Above upper limit"
+            elif lower is not None and val < lower:
+                kind = "lower"
+                lim_disp = float(lower)
+                lim_label = "Below lower limit"
+            else:
+                continue
+            row = d_sorted.iloc[i]
+            step_v = row.get("step")
+            step_s = int(step_v) if pd.notna(step_v) else "–"
+            ts = row.get("timestamp")
+            ts_raw = ts if pd.notna(ts) else pd.NaT
+            ts_str = ts.strftime("%d %b %Y %H:%M:%S") if pd.notna(ts) else "–"
+            rows.append(
+                {
+                    "test": label,
+                    "kind": kind,
+                    "lim_label": lim_label,
+                    "limit_value": lim_disp,
+                    "value": val,
+                    "time_display": ts_str,
+                    "ts": ts_raw,
+                    "step": step_s,
+                    "color": color,
+                }
+            )
+    return rows

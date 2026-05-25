@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from analysis_tab import build_step_ranges
+from services.chart_utils import build_step_ranges
 from .services import CAM_DEFS, _thermo_col, _with_plot_axis
 
 

@@ -7,8 +7,12 @@ import pandas as pd
 from dash import ALL, Input, Output, State, callback_context, dcc, html, no_update
 from dash.exceptions import PreventUpdate
 
+from services.chart_utils import _downsample
 from domain.models import make_modal_selection
 from features.monitor.auto_refresh.schedule import has_any_test_input
+from features.monitor.data import _rows_to_df, _apply_chart_filters, _serialize_df_rows
+from features.monitor.figures import _blank_figure, build_summary_stats, build_temperature_figure, _runtime_hhmm_for_df
+from features.monitor.components import make_chart_panel, _placement_history_note_children
 from features.monitor.log_loading import load_logs_for_test_inputs
 
 
@@ -22,16 +26,6 @@ def register_monitor_callbacks(app, deps: dict) -> None:
     parse_log_header_metadata = deps["parse_log_header_metadata"]
     cached_parse_log = deps["cached_parse_log"]
     DISPLAY_TO_MACHINE_ID = deps["DISPLAY_TO_MACHINE_ID"]
-    _serialize_df_rows = deps["_serialize_df_rows"]
-    make_chart_panel = deps["make_chart_panel"]
-    _rows_to_df = deps["_rows_to_df"]
-    _apply_chart_filters = deps["_apply_chart_filters"]
-    build_temperature_figure = deps["build_temperature_figure"]
-    _blank_figure = deps["_blank_figure"]
-    build_summary_stats = deps["build_summary_stats"]
-    _downsample = deps["_downsample"]
-    _runtime_hhmm_for_df = deps["_runtime_hhmm_for_df"]
-    _placement_history_note_children = deps["_placement_history_note_children"]
 
     @app.callback(
         Output("clock", "children"),

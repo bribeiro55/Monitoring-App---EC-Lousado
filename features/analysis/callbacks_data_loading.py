@@ -5,14 +5,15 @@ from typing import Dict, List, Optional
 from dash import ALL, Input, Output, State, callback_context
 from dash.exceptions import PreventUpdate
 
+from config import COMPARE_PALETTE as compare_palette
 from domain.models import make_analysis_data_entry, make_analysis_test_ref
+from features.monitor.data import _serialize_df_rows
 
 
 def register_analysis_data_loading_callbacks(app, deps: dict) -> None:
-    compare_palette = deps["COMPARE_PALETTE"]
     find_log_path_for_test_number = deps["find_log_path_for_test_number"]
     cached_parse_log = deps["cached_parse_log"]
-    serialize_df_rows = deps["_serialize_df_rows"]
+    serialize_df_rows = _serialize_df_rows
 
     @app.callback(
         Output("analysis-tests-store", "data"),

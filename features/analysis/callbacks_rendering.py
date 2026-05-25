@@ -5,23 +5,28 @@ from typing import List, Optional
 import pandas as pd
 from dash import Input, Output, State, html
 
-from features.analysis.services import build_analysis_test_frames, normalize_analysis_band_limits
+from config import (
+    BAND_LOWER_LINE_COLOR as band_lower_line_color,
+    BAND_UPPER_LINE_COLOR as band_upper_line_color,
+    COMPARE_PALETTE as compare_palette,
+    STEP_BORDER_COLORS as step_border_colors,
+    STEP_COLORS as step_colors,
+)
+from features.analysis.figures import (
+    build_comparison_figure,
+    build_distribution_figure,
+    build_step_average_figure,
+)
+from features.analysis.services import (
+    build_analysis_test_frames,
+    collect_band_crossing_violations,
+    normalize_analysis_band_limits,
+    summary_status_for_band,
+)
 
 
 def register_analysis_rendering_callbacks(app, deps: dict) -> None:
     variable_config = deps["VARIABLE_CONFIG"]
-    compare_palette = deps["COMPARE_PALETTE"]
-    step_colors = deps["STEP_COLORS"]
-    step_border_colors = deps["STEP_BORDER_COLORS"]
-    band_upper_line_color = deps["BAND_UPPER_LINE_COLOR"]
-    band_lower_line_color = deps["BAND_LOWER_LINE_COLOR"]
-    summary_status_for_band = deps["summary_status_for_band"]
-    build_comparison_figure = deps["build_comparison_figure"]
-    build_distribution_figure = deps["build_distribution_figure"]
-    build_step_average_figure = deps["build_step_average_figure"]
-    collect_band_crossing_violations = deps["collect_band_crossing_violations"]
-    rows_to_df = deps["_rows_to_df"]
-    apply_chart_filters = deps["_apply_chart_filters"]
 
     @app.callback(
         Output("analysis-selected-tests", "children"),
@@ -100,8 +105,6 @@ def register_analysis_rendering_callbacks(app, deps: dict) -> None:
             data_filters=data_filters,
             variable_config=variable_config,
             compare_palette=compare_palette,
-            rows_to_df=rows_to_df,
-            apply_chart_filters=apply_chart_filters,
         )
         main_fig = build_comparison_figure(
             test_frames,

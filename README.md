@@ -72,7 +72,7 @@ Included comments already show common options:
   - `features/navigation/`: logic for switching between tabs.
 
 - `services/`  
-  Shared helper code used by more than one feature (for example file lookup, cache, time formatting).
+  Shared helper code used by more than one feature (for example file lookup, cache, time formatting, step/chart utilities).
 
 - `domain/`  
   Shared data models/types that keep stored data consistent between callbacks.
@@ -99,25 +99,32 @@ Folder summary in one line:
   Shared logic used by multiple screens.
   - `services/log_service.py`: file lookup + parse caching
   - `services/runtime.py`: elapsed runtime calculations and formatting
+  - `services/chart_utils.py`: shared step/chart utilities used by monitor, analysis, and O-TKPH (downsample, step ranges, step transitions)
 
 - `features/monitor/`  
   Live Monitor-specific callbacks and UI helpers.
+  - `icons.py`: SVG icon constants (no project dependencies)
+  - `data.py`: pure data transforms — row parsing, filtering, serialization (no Dash, no Plotly)
+  - `figures.py`: Plotly figure builders — temperature chart, summary stats
+  - `components.py`: Dash panel builders — chart panel, placement history note
+  - `layout.py`: layout helpers — `build_monitor_layout()`, `_input_id()`, chart/modal UI helpers
   - `callbacks.py`: chart rendering, modal, manual refresh
   - `log_loading.py`: shared log-loading logic for manual and auto refresh
   - `auto_refresh/`: wall-clock auto-refresh scheduler, banner, and toggle
     - `schedule.py`: pure state machine (testable, no Dash dependency)
     - `callbacks.py`: scheduler and UI callbacks
     - `layout.py`: banner and toggle components
-  - `layout.py`: chart/modal UI helpers
 
 - `features/analysis/`  
   Data Analysis-specific logic.
+  - `layout.py`: Dash layout for the Data Analysis tab
+  - `figures.py`: Plotly figure builders — comparison chart, distribution, step-average heatmap
+  - `services.py`: pure analysis logic — filters, band limits, violations, test frame building
   - `callbacks.py` (facade/entrypoint)
   - `callbacks_filters.py`
   - `callbacks_data_loading.py`
   - `callbacks_rendering.py`
   - `callbacks_export.py`
-  - `services.py` (analysis helper logic)
 
 - `features/navigation/`  
   Top tab switching behavior.
@@ -132,6 +139,10 @@ Folder summary in one line:
   - `callbacks_table.py`
   - `services.py`
   - `figures.py`
+
+- `analysis_tab.py`  
+  Legacy compatibility shim that re-exports analysis symbols from `features/analysis/*` and `services/chart_utils.py`.
+  It is no longer the source of truth for analysis behavior.
 
 - `otkph_tab.py`  
   Legacy compatibility shim that re-exports O-TKPH symbols from `features/otkph/*`.
@@ -164,11 +175,16 @@ Monitoring_V1/
   services/
     log_service.py
     runtime.py
+    chart_utils.py
   features/
     monitor/
+      icons.py
+      data.py
+      figures.py
+      components.py
+      layout.py
       callbacks.py
       log_loading.py
-      layout.py
       auto_refresh/
         schedule.py
         callbacks.py
@@ -176,12 +192,14 @@ Monitoring_V1/
     navigation/
       callbacks.py
     analysis/
+      layout.py
+      figures.py
+      services.py
       callbacks.py
       callbacks_filters.py
       callbacks_data_loading.py
       callbacks_rendering.py
       callbacks_export.py
-      services.py
     otkph/
       layout.py
       callbacks.py
@@ -252,13 +270,17 @@ Notes:
 
 ## Why the new structure matters
 
-Before refactor, most logic lived in one large file.  
-Now logic is grouped by purpose:
+`app.py` is now ~200 lines and `analysis_tab.py` is now a ~33-line shim — both are pure composition roots. All logic has been extracted into purpose-specific modules:
 
-- startup/wiring
-- feature callbacks
-- shared services
-- shared models
+- `features/monitor/icons.py` — constants only
+- `features/monitor/data.py` — pure transforms (no Dash, no Plotly; unit-testable)
+- `features/monitor/figures.py` — Plotly figure builders for the monitor tab
+- `features/monitor/components.py` — Dash panel builders
+- `features/monitor/layout.py` — layout assembly
+- `features/analysis/figures.py` — Plotly figure builders for the analysis tab
+- `features/analysis/layout.py` — Dash layout for the analysis tab
+- `features/analysis/services.py` — pure analysis logic (unit-testable)
+- `services/chart_utils.py` — shared step/chart helpers used across all three tabs
 
 This makes the app easier to maintain, safer to change, and easier for new team members to understand.
 
