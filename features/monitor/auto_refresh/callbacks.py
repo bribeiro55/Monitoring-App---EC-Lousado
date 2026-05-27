@@ -12,9 +12,13 @@ from features.monitor.auto_refresh.schedule import (
 )
 
 
-def register_monitor_auto_refresh_callbacks(app, deps: dict) -> None:
-    MACHINES = deps["MACHINES"]
-    _input_id = deps["_input_id"]
+def register_monitor_auto_refresh_callbacks(
+    app,
+    *,
+    MACHINES,
+    input_id_fn,
+) -> None:
+    _input_id = input_id_fn
 
     def _test_input_states():
         return [

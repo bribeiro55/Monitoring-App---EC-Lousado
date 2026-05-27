@@ -6,34 +6,14 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from config import OUTPUT_COLUMNS
+
 
 MACHINE_LOOKUP: Dict[str, str] = {
     "7900": "M7900",
     "7950": "M7950",
     "7960": "M7960",
 }
-
-# Unified output column order (thermo columns after machine_running).
-OUTPUT_COLUMNS: List[str] = [
-    "timestamp",
-    "machine_id",
-    "position",
-    "step",
-    "speed",
-    "load_kg",
-    "deflection_mm",
-    "inflation_pressure_kpa",
-    "room_temp_c",
-    "cpc_temp_c",
-    "circumference_mm",
-    "torque_nm",
-    "machine_running",
-    "thermo_cam_1",
-    "thermo_cam_2",
-    "thermo_cam_3",
-    "thermo_cam_4",
-    "thermo_cam_5",
-]
 
 _LOCALE_TS_PATTERN = re.compile(
     r"^\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}",

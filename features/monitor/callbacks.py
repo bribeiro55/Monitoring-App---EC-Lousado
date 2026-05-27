@@ -12,20 +12,29 @@ from domain.models import make_modal_selection
 from features.monitor.auto_refresh.schedule import has_any_test_input
 from features.monitor.data import _rows_to_df, _apply_chart_filters, _serialize_df_rows
 from features.monitor.figures import _blank_figure, build_summary_stats, build_temperature_figure, _runtime_hhmm_for_df
-from features.monitor.components import make_chart_panel, _placement_history_note_children
+from features.monitor.components import (
+    _placement_history_note_children,
+    make_chart_panel,
+    make_modal_stats,
+    make_step_legend,
+)
 from features.monitor.log_loading import load_logs_for_test_inputs
 
 
-def register_monitor_callbacks(app, deps: dict) -> None:
-    VARIABLE_CONFIG = deps["VARIABLE_CONFIG"]
-    MACHINES = deps["MACHINES"]
-    MACHINE_BADGE = deps["MACHINE_BADGE"]
-    STEP_COLORS = deps["STEP_COLORS"]
-    _input_id = deps["_input_id"]
-    find_log_path_for_test_number = deps["find_log_path_for_test_number"]
-    parse_log_header_metadata = deps["parse_log_header_metadata"]
-    cached_parse_log = deps["cached_parse_log"]
-    DISPLAY_TO_MACHINE_ID = deps["DISPLAY_TO_MACHINE_ID"]
+def register_monitor_callbacks(
+    app,
+    *,
+    VARIABLE_CONFIG,
+    MACHINES,
+    MACHINE_BADGE,
+    STEP_COLORS,
+    input_id_fn,
+    find_log_path_for_test_number,
+    parse_log_header_metadata,
+    cached_parse_log,
+    DISPLAY_TO_MACHINE_ID,
+) -> None:
+    _input_id = input_id_fn
 
     @app.callback(
         Output("clock", "children"),
@@ -482,86 +491,15 @@ def register_monitor_callbacks(app, deps: dict) -> None:
         if ignore_stopped:
             subtitle += " · Ignore stopped"
 
-        modal_stats_children = [
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[stats["current"], html.Span(f" {var_cfg['unit']}", style={"fontSize": "12px", "color": "var(--muted)"})],
-                    ),
-                    html.Div(className="stat-lbl", children=["CURRENT"]),
-                ],
-            ),
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[stats["max"], html.Span(f" {var_cfg['unit']}", style={"fontSize": "12px", "color": "var(--muted)"})],
-                    ),
-                    html.Div(className="stat-lbl", children=["MAX"]),
-                ],
-            ),
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[stats["min"], html.Span(f" {var_cfg['unit']}", style={"fontSize": "12px", "color": "var(--muted)"})],
-                    ),
-                    html.Div(className="stat-lbl", children=["MIN"]),
-                ],
-            ),
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[stats["avg"], html.Span(f" {var_cfg['unit']}", style={"fontSize": "12px", "color": "var(--muted)"})],
-                    ),
-                    html.Div(className="stat-lbl", children=["AVG"]),
-                ],
-            ),
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[stats["std"], html.Span(f" {var_cfg['unit']}", style={"fontSize": "12px", "color": "var(--muted)"})],
-                    ),
-                    html.Div(className="stat-lbl", children=["STD DEV"]),
-                ],
-            ),
-            html.Div(
-                className="stat",
-                children=[
-                    html.Div(
-                        className="stat-val",
-                        children=[run_time_last],
-                    ),
-                    html.Div(className="stat-lbl", children=["RUN TIME"]),
-                ],
-            ),
-        ]
-
-        legend_children = []
-        for s in range(1, 10):
-            legend_children.append(
-                html.Div(
-                    className="legend-item",
-                    children=[
-                        html.Div(
-                            className="legend-swatch",
-                            style={"background": STEP_COLORS[s].replace("0.08", "0.6")},
-                        ),
-                        html.Span(f"Step {s}"),
-                    ],
-                )
-            )
-
         title = f"{machine_label} · Position {position}"
-        return title, subtitle, placement_note_children, modal_stats_children, fig, legend_children
+        return (
+            title,
+            subtitle,
+            placement_note_children,
+            make_modal_stats(stats, var_cfg, run_time_last),
+            fig,
+            make_step_legend(STEP_COLORS),
+        )
 
 
     app.clientside_callback(

@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional
 import pandas as pd
 from dash import Input, Output, State, callback_context
 
-from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
+from services.data_utils import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .services import (
     _apply_ignore_interrupted_rows,
     _apply_otkph_data_filters,

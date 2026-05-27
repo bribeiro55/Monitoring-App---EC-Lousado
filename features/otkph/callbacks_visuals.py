@@ -8,7 +8,7 @@ from dash import ALL, Input, Output, State, callback_context, dcc, html
 from dash.exceptions import PreventUpdate
 
 from config import LIMIT_PALETTE
-from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
+from services.data_utils import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .figures import (
     _blank_fig,
     _compute_max_delta,

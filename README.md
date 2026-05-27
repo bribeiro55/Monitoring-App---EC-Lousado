@@ -72,7 +72,12 @@ Included comments already show common options:
   - `features/navigation/`: logic for switching between tabs.
 
 - `services/`  
-  Shared helper code used by more than one feature (for example file lookup, cache, time formatting, step/chart utilities).
+  Shared helper code used by more than one feature.
+  - `log_service.py`: file lookup and parse caching
+  - `runtime.py`: elapsed runtime calculations and formatting
+  - `chart_utils.py`: step/chart utilities (downsample, step ranges, step transitions)
+  - `data_utils.py`: cross-feature data utilities — deserialise store rows, filter by steps/stopped state, serialise to store
+  - `filter_utils.py`: shared date/time parsing used by analysis and O-TKPH filters
 
 - `domain/`  
   Shared data models/types that keep stored data consistent between callbacks.
@@ -100,13 +105,15 @@ Folder summary in one line:
   - `services/log_service.py`: file lookup + parse caching
   - `services/runtime.py`: elapsed runtime calculations and formatting
   - `services/chart_utils.py`: shared step/chart utilities used by monitor, analysis, and O-TKPH (downsample, step ranges, step transitions)
+  - `services/data_utils.py`: cross-feature data utilities — row deserialisation, step/stopped filtering, store serialisation
+  - `services/filter_utils.py`: shared date/time parsing used by analysis and O-TKPH time filters
 
 - `features/monitor/`  
   Live Monitor-specific callbacks and UI helpers.
   - `icons.py`: SVG icon constants (no project dependencies)
-  - `data.py`: pure data transforms — row parsing, filtering, serialization (no Dash, no Plotly)
+  - `data.py`: monitor-specific data helpers — placement logic, run-boundary segmentation (re-exports cross-feature utilities from `services/data_utils`)
   - `figures.py`: Plotly figure builders — temperature chart, summary stats
-  - `components.py`: Dash panel builders — chart panel, placement history note
+  - `components.py`: Dash panel builders — chart panel, modal stat cards, step legend, placement history note
   - `layout.py`: layout helpers — `build_monitor_layout()`, `_input_id()`, chart/modal UI helpers
   - `callbacks.py`: chart rendering, modal, manual refresh
   - `log_loading.py`: shared log-loading logic for manual and auto refresh
@@ -140,19 +147,14 @@ Folder summary in one line:
   - `services.py`
   - `figures.py`
 
-- `analysis_tab.py`  
-  Legacy compatibility shim that re-exports analysis symbols from `features/analysis/*` and `services/chart_utils.py`.
-  It is no longer the source of truth for analysis behavior.
-
-- `otkph_tab.py`  
-  Legacy compatibility shim that re-exports O-TKPH symbols from `features/otkph/*`.
-  It is no longer the source of truth for O-TKPH behavior.
-
 - `domain/models.py`  
   Shared data shapes used in stores (to keep payloads consistent and safer).
 
 - `tests/test_analysis_services.py`  
   Unit tests for key analysis helper behavior.
+
+- `tests/test_monitor_data.py`  
+  Unit tests for monitor placement helpers.
 
 - `tests/test_otkph_services.py`  
   Unit tests for O-TKPH filter/frozen-period helper behavior.
@@ -166,8 +168,6 @@ Monitoring_V1/
   app.py
   config.py
   log_parser.py
-  analysis_tab.py
-  otkph_tab.py
   assets/
     style.css
   domain/
@@ -176,6 +176,8 @@ Monitoring_V1/
     log_service.py
     runtime.py
     chart_utils.py
+    data_utils.py
+    filter_utils.py
   features/
     monitor/
       icons.py
@@ -211,6 +213,7 @@ Monitoring_V1/
       figures.py
   tests/
     test_analysis_services.py
+    test_monitor_data.py
     test_otkph_services.py
 ```
 
@@ -268,19 +271,20 @@ Notes:
 
 ---
 
-## Why the new structure matters
+## Why the structure is organised this way
 
-`app.py` is now ~200 lines and `analysis_tab.py` is now a ~33-line shim — both are pure composition roots. All logic has been extracted into purpose-specific modules:
+`app.py` is the single composition root — it wires together layouts and registers callbacks using explicit keyword arguments. All feature logic lives in purpose-specific modules:
 
-- `features/monitor/icons.py` — constants only
-- `features/monitor/data.py` — pure transforms (no Dash, no Plotly; unit-testable)
-- `features/monitor/figures.py` — Plotly figure builders for the monitor tab
-- `features/monitor/components.py` — Dash panel builders
-- `features/monitor/layout.py` — layout assembly
-- `features/analysis/figures.py` — Plotly figure builders for the analysis tab
-- `features/analysis/layout.py` — Dash layout for the analysis tab
-- `features/analysis/services.py` — pure analysis logic (unit-testable)
-- `services/chart_utils.py` — shared step/chart helpers used across all three tabs
+- `services/` — code shared across two or more features. Adding a screen never requires touching `features/monitor/`.
+- `features/*/services.py` — pure business logic with no Dash or Plotly imports; fully unit-testable.
+- `features/*/figures.py` — Plotly figure builders; depend on data, not on Dash state.
+- `features/*/components.py` — Dash HTML builders; depend on data and figures, not on callbacks.
+- `features/*/callbacks*.py` — the only files that touch `app.callback`; thin orchestration wiring state to the functions above.
+
+Key invariants:
+- `features/analysis/` and `features/otkph/` never import from `features/monitor/`. Cross-feature utilities live in `services/`.
+- `config.py` is the single source for all column lists (`OUTPUT_COLUMNS`, `STORE_COLUMNS`), machine names, colors, and variable mappings.
+- All `register_*` functions accept keyword-only arguments — missing dependencies cause a `TypeError` at startup rather than a `KeyError` at the first callback invocation.
 
 This makes the app easier to maintain, safer to change, and easier for new team members to understand.
 

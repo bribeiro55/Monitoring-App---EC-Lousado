@@ -8,7 +8,7 @@ import pandas as pd
 from dash import Input, Output, State, dcc, html, callback_context
 from dash.exceptions import PreventUpdate
 
-from features.monitor.data import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
+from services.data_utils import _rows_to_df as rows_to_df, _serialize_df_rows as serialize_df_rows
 from .services import CAM_DEFS, _build_effective_elapsed_seconds, _camera_health, _format_frozen_period, _thermo_col, collect_frozen_periods
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, List, Optional, TypedDict
 
 
 class LoadDebugPayload(TypedDict, total=False):
@@ -55,10 +55,8 @@ class AnalysisBandLimits(TypedDict):
 
 
 class AnalysisFilterState(TypedDict, total=False):
-    value_mode: str
+    variable_filters: List[Any]
     time_mode: str
-    value_a: Optional[float]
-    value_b: Optional[float]
     time_date_a: Optional[str]
     time_date_b: Optional[str]
     time_time_a: str
@@ -86,15 +84,3 @@ def make_analysis_band_limits(upper: Optional[float], lower: Optional[float]) ->
     return AnalysisBandLimits(upper=upper, lower=lower)
 
 
-def make_analysis_filter_state(**kwargs: Any) -> AnalysisFilterState:
-    return AnalysisFilterState(**kwargs)
-
-
-def default_analysis_filter_state() -> Dict[str, Any]:
-    return {
-        "step": "all",
-        "machine_running": "all",
-        "runtime": {"enabled": False, "min_hhmm": None, "max_hhmm": None},
-        "date_time": {"enabled": False, "start": None, "end": None, "start_hhmm": None, "end_hhmm": None},
-        "temperature_band": {"enabled": False, "upper_c": None, "lower_c": None},
-    }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 from dash import dcc, html
@@ -11,6 +11,48 @@ from features.monitor.data import _df_after_ignore_stopped, _filter_by_steps, _p
 from features.monitor.figures import _runtime_hhmm_for_df, build_summary_stats, build_temperature_figure
 from features.monitor.icons import _ICON_EMPTY_CHART, _ICON_EXPAND
 from features.monitor.layout import make_empty_state, make_expand_button
+
+
+def make_modal_stats(stats: dict, var_cfg: dict, run_time: str) -> List[html.Div]:
+    unit = var_cfg["unit"]
+    unit_span = html.Span(f" {unit}", style={"fontSize": "12px", "color": "var(--muted)"})
+
+    def _stat(val, label: str, with_unit: bool = True) -> html.Div:
+        return html.Div(
+            className="stat",
+            children=[
+                html.Div(
+                    className="stat-val",
+                    children=[val, unit_span] if with_unit else [val],
+                ),
+                html.Div(className="stat-lbl", children=[label]),
+            ],
+        )
+
+    return [
+        _stat(stats["current"], "CURRENT"),
+        _stat(stats["max"], "MAX"),
+        _stat(stats["min"], "MIN"),
+        _stat(stats["avg"], "AVG"),
+        _stat(stats["std"], "STD DEV"),
+        _stat(run_time, "RUN TIME", with_unit=False),
+    ]
+
+
+def make_step_legend(step_colors: Dict[int, str]) -> List[html.Div]:
+    return [
+        html.Div(
+            className="legend-item",
+            children=[
+                html.Div(
+                    className="legend-swatch",
+                    style={"background": step_colors[s].replace("0.08", "0.6")},
+                ),
+                html.Span(f"Step {s}"),
+            ],
+        )
+        for s in range(1, 10)
+    ]
 
 
 def _placement_history_note_children(

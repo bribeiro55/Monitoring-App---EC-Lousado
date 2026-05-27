@@ -8,29 +8,18 @@ import plotly.graph_objects as go
 
 from config import BAND_LOWER_LINE_COLOR, BAND_UPPER_LINE_COLOR, STEP_COLORS, STEP_BORDER_COLORS
 from services.chart_utils import (
+    TICK_FONT,
     _downsample,
     _index_bounds_for_timestamp_window,
     _x_at_step_transition,
+    blank_figure,
     build_step_ranges,
     build_step_transitions,
 )
 from services.runtime import build_running_elapsed_seconds_series, format_hhmm_from_seconds
 
 
-def _blank_figure() -> go.Figure:
-    fig = go.Figure()
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
-
-
-def _tick_font() -> dict:
-    return {"family": "DM Mono, monospace", "size": 10, "color": "#9A9EA8"}
+_blank_figure = blank_figure
 
 
 def _insert_gap_breaks_for_plot(
@@ -159,7 +148,7 @@ def build_comparison_figure(
     y_hi = y_max + pad
 
     fig = go.Figure()
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
 
     for step_val, t0, t1 in build_step_ranges(ref_df, pre_sorted=True):
         if step_val not in step_colors:
@@ -221,12 +210,6 @@ def build_comparison_figure(
         "Run=%{customdata[1]}<br>"
         + f"{var_label}=%{{y:.2f}} {var_unit}<extra></extra>"
     )
-    hover_time = (
-        "%{fullData.name}<br>"
-        "t=%{customdata[0]}<br>"
-        "Run=%{customdata[1]}<br>"
-        + f"{var_label}=%{{y:.2f}} {var_unit}<extra></extra>"
-    )
 
     for label, dff, color in test_frames:
         if dff.empty:
@@ -273,7 +256,7 @@ def build_comparison_figure(
                     mode="lines",
                     name=label,
                     line=dict(color=color, width=2, shape="hv"),
-                    hovertemplate=hover_time,
+                    hovertemplate=hover_norm,
                     customdata=custom_data,
                 )
             )
@@ -406,7 +389,7 @@ def build_distribution_figure(
                 marker=dict(color=color, line=dict(color=color, width=1), opacity=0.85),
             )
         )
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     fig.update_layout(
         barmode="group",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -455,7 +438,7 @@ def build_step_average_figure(
                 marker=dict(color=color, line=dict(color=color, width=1), opacity=0.85),
             )
         )
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     fig.update_layout(
         barmode="group",
         paper_bgcolor="rgba(0,0,0,0)",

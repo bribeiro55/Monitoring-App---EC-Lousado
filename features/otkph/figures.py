@@ -6,24 +6,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from services.chart_utils import build_step_ranges
+from services.chart_utils import TICK_FONT, blank_figure, build_step_ranges
 from .services import CAM_DEFS, _thermo_col, _with_plot_axis
 
 
-def _tick_font() -> dict:
-    return {"family": "DM Mono, monospace", "size": 10, "color": "#9A9EA8"}
-
-
-def _blank_fig() -> go.Figure:
-    fig = go.Figure()
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
+_blank_fig = blank_figure
 
 
 def _compressed_axis_date_ticks(df: pd.DataFrame, max_ticks: int = 8) -> Tuple[List[float], List[str]]:
@@ -97,7 +84,7 @@ def build_camera_time_figure(
         return _blank_fig()
     if dplot is None:
         dplot = _with_plot_axis(df, ignore_interrupted)
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     fig = go.Figure()
     shapes = _step_shapes_datetime(dplot, step_colors)
     x = dplot["plot_x"]
@@ -163,7 +150,7 @@ def build_delta_figure(df: pd.DataFrame, active: List[int], step_colors: Dict[in
         return _blank_fig()
     delta = np.nanmax(arr, axis=1) - np.nanmin(arr, axis=1)
     x = df["plot_x"]
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     fig = go.Figure(data=[go.Scatter(x=x, y=delta, mode="lines", line=dict(color="#B36EE8", width=2), connectgaps=False, customdata=df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").fillna("–"), hovertemplate="ΔT: %{y:.2f} °C<br>%{customdata}<extra></extra>")])
     x_is_numeric = "plot_x" in df.columns and pd.api.types.is_numeric_dtype(df["plot_x"])
     xaxis_cfg = dict(gridcolor="#E8EAF0", tickfont=tick_font, type="linear" if x_is_numeric else "date")
@@ -194,7 +181,7 @@ def _compute_max_delta(dff: pd.DataFrame, active: List[int]) -> float:
 def build_speed_figure(df: pd.DataFrame, step_colors: Dict[int, str]) -> go.Figure:
     if df.empty or "speed" not in df.columns:
         return _blank_fig()
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     x = df["plot_x"] if "plot_x" in df.columns else df["timestamp"]
     spd = pd.to_numeric(df["speed"], errors="coerce")
     if spd.dropna().empty:
@@ -220,7 +207,7 @@ def build_scatter_figure(df: pd.DataFrame, cam_a: int, cam_b: int) -> go.Figure:
     if not m.any():
         return _blank_fig()
     xs, ys = xa[m].to_numpy(), xb[m].to_numpy()
-    tick_font = _tick_font()
+    tick_font = TICK_FONT
     fig = go.Figure(data=[go.Scatter(x=xs, y=ys, mode="markers", marker=dict(size=6, color=CAM_DEFS[cam_a - 1]["color"], opacity=0.65), name="samples")])
     if len(xs) > 1:
         coef = np.polyfit(xs, ys, 1)

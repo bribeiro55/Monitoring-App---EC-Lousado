@@ -9,11 +9,11 @@ from dash import Input, Output, State, dcc
 from dash.exceptions import PreventUpdate
 
 from features.analysis.services import apply_single_test_analysis_filters
-from features.monitor.data import _rows_to_df, _apply_chart_filters
+from services.data_utils import _apply_chart_filters, _rows_to_df
 
 
-def register_analysis_export_callbacks(app, deps: dict) -> None:
-    variable_config = deps["VARIABLE_CONFIG"]
+def register_analysis_export_callbacks(app, *, VARIABLE_CONFIG) -> None:
+    variable_config = VARIABLE_CONFIG
     rows_to_df = _rows_to_df
     apply_chart_filters = _apply_chart_filters
 

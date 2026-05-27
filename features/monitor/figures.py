@@ -7,9 +7,11 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from services.chart_utils import (
+    TICK_FONT,
     _downsample,
     _index_bounds_for_timestamp_window,
     _x_at_step_transition,
+    blank_figure,
     build_step_ranges,
     build_step_transitions,
 )
@@ -32,15 +34,7 @@ def _rgba_from_hex(hex_color: str, alpha: float) -> str:
 
 
 def _blank_figure() -> go.Figure:
-    fig = go.Figure()
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
+    return blank_figure(margin=0)
 
 
 def _runtime_hhmm_for_df(df: pd.DataFrame) -> List[str]:
@@ -249,7 +243,7 @@ def build_temperature_figure(
             layer="above",
         )
 
-    tick_font = {"family": "DM Mono, monospace", "size": 10, "color": "#9A9EA8"}
+    tick_font = TICK_FONT
     if ignore_stopped:
         n = len(df_plot)
         nt = min(8, max(2, n))

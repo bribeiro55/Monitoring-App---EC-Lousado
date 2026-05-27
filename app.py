@@ -9,7 +9,6 @@ from config import (
     MACHINE_BADGE,
     MACHINES,
     PROJECT_ROOT,
-    STEP_BORDER_COLORS,
     STEP_COLORS,
     VARIABLE_CONFIG,
 )
@@ -141,38 +140,30 @@ app.layout = html.Div(
 
 register_monitor_callbacks(
     app,
-    {
-        "VARIABLE_CONFIG": VARIABLE_CONFIG,
-        "MACHINES": MACHINES,
-        "MACHINE_BADGE": MACHINE_BADGE,
-        "STEP_COLORS": STEP_COLORS,
-        "_input_id": _input_id,
-        "find_log_path_for_test_number": lambda test_number: find_log_path_for_test_number(test_number, PROJECT_ROOT),
-        "parse_log_header_metadata": parse_log_header_metadata,
-        "cached_parse_log": cached_parse_log,
-        "DISPLAY_TO_MACHINE_ID": DISPLAY_TO_MACHINE_ID,
-    },
+    VARIABLE_CONFIG=VARIABLE_CONFIG,
+    MACHINES=MACHINES,
+    MACHINE_BADGE=MACHINE_BADGE,
+    STEP_COLORS=STEP_COLORS,
+    input_id_fn=_input_id,
+    find_log_path_for_test_number=lambda test_number: find_log_path_for_test_number(test_number, PROJECT_ROOT),
+    parse_log_header_metadata=parse_log_header_metadata,
+    cached_parse_log=cached_parse_log,
+    DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
 )
 
 register_monitor_auto_refresh_callbacks(
     app,
-    {
-        "MACHINES": MACHINES,
-        "_input_id": _input_id,
-    },
+    MACHINES=MACHINES,
+    input_id_fn=_input_id,
 )
 
 register_navigation_callbacks(app)
 
 register_analysis_callbacks(
     app,
-    {
-        "VARIABLE_CONFIG": VARIABLE_CONFIG,
-        "STEP_COLORS": STEP_COLORS,
-        "STEP_BORDER_COLORS": STEP_BORDER_COLORS,
-        "find_log_path_for_test_number": lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT),
-        "cached_parse_log": cached_parse_log,
-    },
+    VARIABLE_CONFIG=VARIABLE_CONFIG,
+    find_log_path_for_test_number=lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT),
+    cached_parse_log=cached_parse_log,
 )
 
 register_otkph_callbacks(

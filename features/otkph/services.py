@@ -5,6 +5,8 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
+from services.filter_utils import to_opt_datetime
+
 CAM_DEFS = [
     {"i": 1, "code": "CAM-01", "label": "Camera 1", "color": "#F0BA20"},
     {"i": 2, "code": "CAM-02", "label": "Camera 2", "color": "#E8721A"},
@@ -64,16 +66,6 @@ def _normalize_otkph_filter_state(state: Optional[dict]) -> dict:
     return fs
 
 
-def _to_opt_datetime(date_s: Optional[str], time_s: Optional[str], fallback_time: str) -> Optional[pd.Timestamp]:
-    if not date_s:
-        return None
-    t = str(time_s or fallback_time).strip() or fallback_time
-    try:
-        return pd.to_datetime(f"{date_s} {t}", errors="coerce")
-    except Exception:
-        return None
-
-
 def _apply_otkph_data_filters(df: pd.DataFrame, fs: Optional[dict]) -> pd.DataFrame:
     if df.empty:
         return df
@@ -84,8 +76,8 @@ def _apply_otkph_data_filters(df: pd.DataFrame, fs: Optional[dict]) -> pd.DataFr
     if d.empty:
         return d
     t_mode = st["time_mode"]
-    ta = _to_opt_datetime(st.get("time_date_a"), st.get("time_time_a"), "00:00")
-    tb = _to_opt_datetime(st.get("time_date_b"), st.get("time_time_b"), "23:59")
+    ta = to_opt_datetime(st.get("time_date_a"), st.get("time_time_a"), "00:00")
+    tb = to_opt_datetime(st.get("time_date_b"), st.get("time_time_b"), "23:59")
     if t_mode == "after" and ta is not None:
         d = d[d["timestamp"] >= ta]
     elif t_mode == "before" and ta is not None:

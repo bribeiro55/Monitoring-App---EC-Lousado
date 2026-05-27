@@ -34,6 +34,27 @@ VARIABLE_CONFIG = {
     "torque": {"col": "torque_nm", "label": "Torque", "unit": "Nm"},
 }
 
+OUTPUT_COLUMNS = [
+    "timestamp",
+    "machine_id",
+    "position",
+    "step",
+    "speed",
+    "load_kg",
+    "deflection_mm",
+    "inflation_pressure_kpa",
+    "room_temp_c",
+    "cpc_temp_c",
+    "circumference_mm",
+    "torque_nm",
+    "machine_running",
+    "thermo_cam_1",
+    "thermo_cam_2",
+    "thermo_cam_3",
+    "thermo_cam_4",
+    "thermo_cam_5",
+]
+
 STORE_COLUMNS = [
     "timestamp",
     "machine_id",

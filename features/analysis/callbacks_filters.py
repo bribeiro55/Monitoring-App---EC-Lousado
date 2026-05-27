@@ -130,7 +130,7 @@ def _render_var_filter_rows(filters: List[dict]) -> List[html.Div]:
     return rows
 
 
-def register_analysis_filter_callbacks(app, deps: dict) -> None:
+def register_analysis_filter_callbacks(app) -> None:
     @app.callback(
         Output("analysis-active-steps-store", "data"),
         Output({"type": "analysis-step-pill", "step": ALL}, "className"),

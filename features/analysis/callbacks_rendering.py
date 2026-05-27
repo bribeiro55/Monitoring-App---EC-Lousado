@@ -25,8 +25,8 @@ from features.analysis.services import (
 )
 
 
-def register_analysis_rendering_callbacks(app, deps: dict) -> None:
-    variable_config = deps["VARIABLE_CONFIG"]
+def register_analysis_rendering_callbacks(app, *, VARIABLE_CONFIG) -> None:
+    variable_config = VARIABLE_CONFIG
 
     @app.callback(
         Output("analysis-selected-tests", "children"),

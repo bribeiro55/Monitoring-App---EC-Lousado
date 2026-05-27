@@ -7,12 +7,15 @@ from dash.exceptions import PreventUpdate
 
 from config import COMPARE_PALETTE as compare_palette
 from domain.models import make_analysis_data_entry, make_analysis_test_ref
-from features.monitor.data import _serialize_df_rows
+from services.data_utils import _serialize_df_rows
 
 
-def register_analysis_data_loading_callbacks(app, deps: dict) -> None:
-    find_log_path_for_test_number = deps["find_log_path_for_test_number"]
-    cached_parse_log = deps["cached_parse_log"]
+def register_analysis_data_loading_callbacks(
+    app,
+    *,
+    find_log_path_for_test_number,
+    cached_parse_log,
+) -> None:
     serialize_df_rows = _serialize_df_rows
 
     @app.callback(

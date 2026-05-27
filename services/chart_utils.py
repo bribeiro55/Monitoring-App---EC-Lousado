@@ -4,6 +4,22 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+
+TICK_FONT: dict = {"family": "DM Mono, monospace", "size": 10, "color": "#9A9EA8"}
+
+
+def blank_figure(margin: int = 10) -> go.Figure:
+    m = dict(l=margin, r=margin, t=margin, b=margin)
+    fig = go.Figure()
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=m,
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
 
 
 def _downsample(df: pd.DataFrame, max_points: int = 2000) -> pd.DataFrame:
