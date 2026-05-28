@@ -6,7 +6,7 @@ from dash import dcc, html
 
 from features.monitor.auto_refresh.layout import make_auto_refresh_banner, make_auto_refresh_toggle
 from features.monitor.figures import _blank_figure
-from features.monitor.icons import _ICON_CSV, _ICON_DOWNLOAD
+from features.monitor.icons import _ICON_CSV, _ICON_DOWNLOAD, ICON_SYNC
 
 
 def make_empty_state(message: str = "No test assigned", icon_src: str | None = None) -> html.Div:
@@ -54,7 +54,26 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
             html.Div(
                 className="main",
                 children=[
-                    html.Div(className="section-label", children=["Current Tests Running"]),
+                    html.Div(
+                        style={"display": "flex", "alignItems": "center", "gap": "12px"},
+                        children=[
+                            html.Div(className="section-label", children=["Current Tests Running"]),
+                            html.Div(className="divider"),
+                            html.Div(
+                                className="toggle-wrap",
+                                style={"display": "flex", "alignItems": "center", "gap": "6px", "marginBottom": "10px"},
+                                children=[
+                                    html.Div(id="sync-enabled-toggle", className="toggle on", n_clicks=0),
+                                    html.Span("Auto-sync", className="toggle-label",
+                                              style={"fontSize": "11px"}),
+                                ],
+                            ),
+                            html.Div(
+                                id="sync-status-text",
+                                style={"fontSize": "11px", "color": "var(--muted)", "marginBottom": "10px"},
+                            ),
+                        ],
+                    ),
                     html.Div(
                         className="tests-panel",
                         children=[
@@ -179,7 +198,9 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                             dcc.Store(id="modal-open-store", data=False),
                             dcc.Store(id="modal-selection-store", data={}),
                             dcc.Store(id="png-export-state", data=0),
+                            dcc.Store(id="sync-enabled-store", data=True),
                             dcc.Download(id="modal-csv-download"),
+                            dcc.Interval(id="sync-poll-interval", interval=10_000, n_intervals=0),
                         ],
                     ),
                     html.Details(
@@ -193,6 +214,65 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                     make_auto_refresh_banner(),
                     html.Div(id="graphs-section-label", className="section-label", children=["Temperature Over Time"]),
                     html.Div(id="charts-grid", className="charts-grid"),
+                    html.Div(
+                        id="registry-modal-overlay",
+                        className="modal-overlay",
+                        children=[
+                            html.Div(
+                                className="modal",
+                                style={"maxWidth": "640px", "width": "90%"},
+                                children=[
+                                    html.Div(
+                                        className="modal-header",
+                                        children=[
+                                            html.Div(
+                                                html.Div("Test Registry", className="modal-title"),
+                                            ),
+                                            html.Div(
+                                                className="modal-actions",
+                                                children=[
+                                                    html.Button(
+                                                        "✕",
+                                                        id="registry-modal-close-btn",
+                                                        className="modal-close",
+                                                        n_clicks=0,
+                                                    ),
+                                                ],
+                                            ),
+                                        ],
+                                    ),
+                                    html.Div(id="registry-modal-body"),
+                                    html.Div(
+                                        style={
+                                            "display": "flex",
+                                            "gap": "8px",
+                                            "alignItems": "center",
+                                            "paddingTop": "12px",
+                                            "borderTop": "1px solid var(--border)",
+                                        },
+                                        children=[
+                                            dcc.Input(
+                                                id="registry-add-input",
+                                                className="test-input",
+                                                placeholder="Test number",
+                                                type="text",
+                                                value="",
+                                                debounce=False,
+                                                style={"width": "140px"},
+                                            ),
+                                            html.Button(
+                                                "Add Active",
+                                                id="registry-add-btn",
+                                                className="refresh-btn",
+                                                n_clicks=0,
+                                                style={"fontSize": "12px"},
+                                            ),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
                     html.Div(
                         id="modal-overlay",
                         className="modal-overlay",

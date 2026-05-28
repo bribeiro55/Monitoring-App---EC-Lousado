@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 from dash import Dash, dcc, html
 from flask_caching import Cache
@@ -10,9 +11,16 @@ from config import (
     MACHINES,
     PROJECT_ROOT,
     STEP_COLORS,
+    SYNC_DEST_ROOT,
+    SYNC_ENABLED_BY_DEFAULT,
+    SYNC_SCHEDULE_MINUTES,
+    SYNC_SOURCE_ROOT,
+    TEST_REGISTRY_PATH,
     VARIABLE_CONFIG,
 )
 from log_parser import parse_log_file, parse_log_header_metadata
+from services.test_registry import TestRegistry
+from services.sync_service import SyncScheduler
 
 from features.analysis.layout import build_analysis_layout
 from features.otkph import build_otkph_layout, register_otkph_callbacks
@@ -28,6 +36,7 @@ from features.monitor.icons import (
     _ICON_TAB_ANALYSIS,
     _ICON_TAB_OTKPH,
     _img_tab_style,
+    ICON_REGISTRY,
 )
 
 
@@ -44,6 +53,17 @@ cache = Cache(
 os.makedirs(os.path.join(APP_ROOT, ".cache"), exist_ok=True)
 
 cached_parse_log = build_cached_parse_log(cache, parse_log_file)
+
+registry = TestRegistry(TEST_REGISTRY_PATH)
+registry.load()
+
+scheduler = SyncScheduler(
+    source_root=pathlib.Path(SYNC_SOURCE_ROOT),
+    dest_root=pathlib.Path(SYNC_DEST_ROOT),
+    get_active_tests=registry.get_active,
+    schedule_minutes=SYNC_SCHEDULE_MINUTES,
+    enabled=SYNC_ENABLED_BY_DEFAULT,
+)
 
 
 app.layout = html.Div(
@@ -98,6 +118,20 @@ app.layout = html.Div(
                 html.Div(
                     className="topbar-right",
                     children=[
+                        html.Button(
+                            id="registry-open-btn",
+                            className="icon-btn",
+                            title="Test Registry",
+                            n_clicks=0,
+                            style={"display": "flex", "alignItems": "center", "padding": "0", "marginRight": "8px"},
+                            children=[
+                                html.Img(
+                                    src=ICON_REGISTRY,
+                                    alt="",
+                                    style={"width": "15px", "height": "15px", "display": "block"},
+                                )
+                            ],
+                        ),
                         html.Div(className="live-pill", children=[html.Div(className="live-dot"), html.Span("LIVE")]),
                         html.Div(
                             id="clock",
@@ -149,6 +183,9 @@ register_monitor_callbacks(
     parse_log_header_metadata=parse_log_header_metadata,
     cached_parse_log=cached_parse_log,
     DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
+    registry=registry,
+    scheduler=scheduler,
+    SYNC_SOURCE_ROOT=SYNC_SOURCE_ROOT,
 )
 
 register_monitor_auto_refresh_callbacks(
@@ -172,6 +209,8 @@ register_otkph_callbacks(
     find_log_path=lambda test_number: find_log_path_for_test_number(test_number, PROJECT_ROOT),
     cached_parse=cached_parse_log,
 )
+
+scheduler.start()
 
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=8050)

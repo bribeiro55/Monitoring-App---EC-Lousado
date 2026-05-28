@@ -45,3 +45,16 @@ _ICON_TAB_OTKPH = _svg_data_uri(
 )
 
 _img_tab_style: dict = {"width": "14px", "height": "14px", "display": "block", "opacity": "0.85"}
+
+ICON_REGISTRY = _svg_data_uri(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" '
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+    'viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+    '<path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>'
+)
+ICON_SYNC = _svg_data_uri(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" '
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+    'viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>'
+    '<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>'
+)

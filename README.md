@@ -12,11 +12,11 @@ The goal of this README is to explain the app in plain language, including where
 
 ## How the app works (plain language)
 
-1. You type a **test number**.
-2. The app finds the corresponding `.log` file in the configured root folder.
-3. The parser turns that file into structured data.
-4. Each screen (Monitor / Analysis / O-TKPH) reads that data from stores and builds charts/tables.
-5. Filters (steps, ignore stopped, limits) only change what is shown; they do not modify the original file.
+1. You add test numbers to the **Test Registry** (the document icon next to "Current Tests Running").
+2. The app **automatically syncs** the corresponding test folders from the network share (`Z:\prstruh\ctend_pt`) into a local `logs/` folder every 30 minutes.
+3. You type test numbers into the machine/position slots on the Live Monitor and click **Refresh** to view charts.
+4. Each screen (Monitor / Analysis / O-TKPH) reads data from stores and builds charts/tables.
+5. Filters (steps, ignore stopped, limits) only change what is shown; they do not modify the original files.
 
 ---
 
@@ -42,17 +42,57 @@ Rules:
 
 ## Where to configure paths
 
-Path configuration is now centralized in `config.py`.
+Path configuration is centralized in `config.py`.
 
 Important lines:
 
 - `APP_ROOT` = this project folder
-- `PROJECT_ROOT` = where test folders are searched
+- `PROJECT_ROOT` = where test folders are stored locally (`logs/` by default)
+- `SYNC_SOURCE_ROOT` = network share to sync from (currently `Z:\prstruh\ctend_pt`)
+- `SYNC_DEST_ROOT` = same as `PROJECT_ROOT` — the local `logs/` folder
+- `SYNC_SCHEDULE_MINUTES` = `[20, 50]` — sync fires at XX:20 and XX:50 each hour
+- `TEST_REGISTRY_PATH` = `data/test_registry.json` — persisted list of active/planned tests
 
-Included comments already show common options:
+---
 
-- network path (example)
-- local logs folder example: `os.path.join(APP_ROOT, "logs")`
+## Sync and Test Registry
+
+### How syncing works
+
+The app replicates the test folder from the network share into the local `logs/` folder using a Python mirror (no external scripts needed). For each active test, it:
+
+1. Scans `SYNC_SOURCE_ROOT` for a folder ending in `<test_number>.00a` that contains `<test_number>.log`.
+2. Mirrors that folder locally: copies new/changed files (comparing mtime + size), deletes files that no longer exist on the share.
+3. Logs the result (files copied, deleted, unchanged) in the Sync Status panel.
+
+### Timing offset (important)
+
+| Scheduler | Fires at | Purpose |
+|---|---|---|
+| Sync | `:20` and `:50` | Copies files from share into `logs/` |
+| Auto-refresh | `:00` and `:30` | Reloads chart data from `logs/` into the UI |
+
+The sync always runs 10 minutes before the auto-refresh reads the files, so charts always show freshly copied data.
+
+### Test Registry
+
+The **Test Registry** (opened by clicking the document icon next to "Current Tests Running") is the replacement for `active_test.txt`. It persists to `data/test_registry.json` and survives app restarts.
+
+- **Active** tests are synced automatically on each cycle.
+- **Planned** tests are kept for reference but not synced yet.
+- Removing a test from the registry stops future syncs but does **not** delete any local log files already copied.
+
+All users connected to the same server see the same registry — changes by one user are visible to others within 10 seconds (poll interval).
+
+### Sync Status panel
+
+Below the Diagnostics section on the Live Monitor tab you will find the Sync Status panel:
+
+- Shows **Last sync** time (relative) and **Next** sync time.
+- Per-test rows with status icons: ✓ ok / ✗ error / – not found on share.
+- **Sync Now** button to trigger an immediate sync.
+- **Auto-sync** toggle to pause/resume the background scheduler.
+- A warning banner if the network share is unreachable.
 
 ---
 
@@ -61,12 +101,11 @@ Included comments already show common options:
 ### What each folder does (simple)
 
 - `assets/`  
-  Visual files for the app interface (CSS styles, icons, images).  
-  Think of this as the app's look-and-feel folder.
+  Visual files for the app interface (CSS styles, icons, images).
 
 - `features/`  
   Main business logic grouped by screen/feature.
-  - `features/monitor/`: logic for the **Live Monitor** tab (charts, manual refresh, auto-refresh).
+  - `features/monitor/`: logic for the **Live Monitor** tab (charts, refresh, auto-refresh, sync UI, test registry modal).
   - `features/analysis/`: logic for the **Data Analysis** tab.
   - `features/otkph/`: logic for the **O-TKPH Analysis** tab.
   - `features/navigation/`: logic for switching between tabs.
@@ -74,10 +113,15 @@ Included comments already show common options:
 - `services/`  
   Shared helper code used by more than one feature.
   - `log_service.py`: file lookup and parse caching
-  - `runtime.py`: elapsed runtime calculations and formatting
+  - `sync_service.py`: mirror logic + background sync scheduler (no Dash dependency)
+  - `test_registry.py`: thread-safe, JSON-backed active/planned test list (no Dash dependency)
   - `chart_utils.py`: step/chart utilities (downsample, step ranges, step transitions)
   - `data_utils.py`: cross-feature data utilities — deserialise store rows, filter by steps/stopped state, serialise to store
   - `filter_utils.py`: shared date/time parsing used by analysis and O-TKPH filters
+
+- `data/`  
+  Persisted app state. Currently holds `test_registry.json` (created automatically on first run).  
+  This folder is tracked in git via `.gitkeep` but `test_registry.json` itself is gitignored.
 
 - `domain/`  
   Shared data models/types that keep stored data consistent between callbacks.
@@ -86,78 +130,10 @@ Included comments already show common options:
   Automated checks that confirm important app behavior still works after changes.
 
 - `logs/` (if present locally)  
-  Local test log files used during development when `PROJECT_ROOT` points here.
+  Local test log files — either manually placed or automatically synced from the network share.
 
 Folder summary in one line:  
-`features/` = what the app does, `services/` = shared helpers, `domain/` = data shapes, `assets/` = visual style, `tests/` = safety checks.
-
-- `app.py`  
-  Main startup file. Creates the app, loads layout, and connects feature modules.
-
-- `config.py`  
-  Central place for settings and constants (paths, machine names, colors, variable labels).
-
-- `log_parser.py`  
-  Reads raw `.log` files and converts them into clean table-like data.
-
-- `services/`  
-  Shared logic used by multiple screens.
-  - `services/log_service.py`: file lookup + parse caching
-  - `services/runtime.py`: elapsed runtime calculations and formatting
-  - `services/chart_utils.py`: shared step/chart utilities used by monitor, analysis, and O-TKPH (downsample, step ranges, step transitions)
-  - `services/data_utils.py`: cross-feature data utilities — row deserialisation, step/stopped filtering, store serialisation
-  - `services/filter_utils.py`: shared date/time parsing used by analysis and O-TKPH time filters
-
-- `features/monitor/`  
-  Live Monitor-specific callbacks and UI helpers.
-  - `icons.py`: SVG icon constants (no project dependencies)
-  - `data.py`: monitor-specific data helpers — placement logic, run-boundary segmentation (re-exports cross-feature utilities from `services/data_utils`)
-  - `figures.py`: Plotly figure builders — temperature chart, summary stats
-  - `components.py`: Dash panel builders — chart panel, modal stat cards, step legend, placement history note
-  - `layout.py`: layout helpers — `build_monitor_layout()`, `_input_id()`, chart/modal UI helpers
-  - `callbacks.py`: chart rendering, modal, manual refresh
-  - `log_loading.py`: shared log-loading logic for manual and auto refresh
-  - `auto_refresh/`: wall-clock auto-refresh scheduler, banner, and toggle
-    - `schedule.py`: pure state machine (testable, no Dash dependency)
-    - `callbacks.py`: scheduler and UI callbacks
-    - `layout.py`: banner and toggle components
-
-- `features/analysis/`  
-  Data Analysis-specific logic.
-  - `layout.py`: Dash layout for the Data Analysis tab
-  - `figures.py`: Plotly figure builders — comparison chart, distribution, step-average heatmap
-  - `services.py`: pure analysis logic — filters, band limits, violations, test frame building
-  - `callbacks.py` (facade/entrypoint)
-  - `callbacks_filters.py`
-  - `callbacks_data_loading.py`
-  - `callbacks_rendering.py`
-  - `callbacks_export.py`
-
-- `features/navigation/`  
-  Top tab switching behavior.
-
-- `features/otkph/`  
-  O-TKPH feature entrypoints and module map.
-  - `layout.py` (layout entrypoint)
-  - `callbacks.py` (facade/entrypoint)
-  - `callbacks_filters.py`
-  - `callbacks_selection.py`
-  - `callbacks_visuals.py`
-  - `callbacks_table.py`
-  - `services.py`
-  - `figures.py`
-
-- `domain/models.py`  
-  Shared data shapes used in stores (to keep payloads consistent and safer).
-
-- `tests/test_analysis_services.py`  
-  Unit tests for key analysis helper behavior.
-
-- `tests/test_monitor_data.py`  
-  Unit tests for monitor placement helpers.
-
-- `tests/test_otkph_services.py`  
-  Unit tests for O-TKPH filter/frozen-period helper behavior.
+`features/` = what the app does, `services/` = shared helpers, `domain/` = data shapes, `data/` = persisted state, `assets/` = visual style, `tests/` = safety checks.
 
 ---
 
@@ -170,11 +146,15 @@ Monitoring_V1/
   log_parser.py
   assets/
     style.css
+  data/
+    .gitkeep
+    test_registry.json          ← gitignored, created at runtime
   domain/
     models.py
   services/
     log_service.py
-    runtime.py
+    sync_service.py             ← NEW: mirror logic + SyncScheduler thread
+    test_registry.py            ← NEW: persistent active/planned test list
     chart_utils.py
     data_utils.py
     filter_utils.py
@@ -186,6 +166,7 @@ Monitoring_V1/
       components.py
       layout.py
       callbacks.py
+      callbacks_sync.py         ← NEW: sync panel + registry modal callbacks
       log_loading.py
       auto_refresh/
         schedule.py
@@ -212,6 +193,8 @@ Monitoring_V1/
       services.py
       figures.py
   tests/
+    test_sync_service.py        ← NEW
+    test_test_registry.py       ← NEW
     test_analysis_services.py
     test_monitor_data.py
     test_otkph_services.py
@@ -228,6 +211,8 @@ Monitoring_V1/
 - Supports step filtering and ignore stopped
 - Uses cached parsing for speed
 - **Auto-refresh** (optional, on by default): reloads test data on a wall-clock schedule
+- **Auto-sync** (on by default): mirrors active tests from the network share in the background
+- **Test Registry**: document icon button next to the heading opens a modal to manage active/planned tests
 
 #### Auto-refresh behavior
 
@@ -240,15 +225,25 @@ Auto-refresh only applies to the **Live Monitor** tab. It re-runs the same load 
 | You click **Dismiss** during the countdown | That half-hour cycle is skipped; the next attempt is at the next `:00` or `:30` |
 | **Auto-refresh** toggle is off | The cycle is skipped silently (no banner, no reload) |
 | No test numbers typed | The cycle is skipped silently |
-| You switch tabs during the countdown | The countdown continues; reload still happens unless you dismissed first |
 | Manual **Refresh** | Works independently; still closes the expanded chart modal |
+
+#### Auto-sync behavior
+
+The background sync runs in a daemon thread and never blocks the UI.
+
+| Situation | What happens |
+|---|---|
+| `:20` or `:50` (server time) | Sync fires for all **Active** tests in the registry |
+| **Sync Now** button clicked | Sync fires immediately, then resumes the normal schedule |
+| **Auto-sync** toggle is off | Scheduled syncs are skipped; Sync Now still works |
+| Source share unreachable | A warning is shown in the Sync Status panel; sync is skipped |
+| Test removed from registry | Future syncs stop; already-copied local files are kept |
 
 Notes:
 
-- Schedule is aligned to server wall-clock (`:00` and `:30`), not "30 minutes since last refresh".
-- The toggle resets to **on** each time the app is loaded.
-- If the app starts mid-way through a half-hour window (for example at `:00:15`), it waits for the next boundary rather than refreshing immediately.
-- When a chart modal is open, auto-refresh keeps it open and updates the modal content; manual Refresh still closes it.
+- Sync fires 10 minutes before auto-refresh so charts always show fresh data.
+- `SYNC_SOURCE_ROOT` in `config.py` is the only place to change the share path.
+- The registry is shared across all users connected to the same server instance.
 
 ### Data Analysis
 
@@ -276,6 +271,7 @@ Notes:
 `app.py` is the single composition root — it wires together layouts and registers callbacks using explicit keyword arguments. All feature logic lives in purpose-specific modules:
 
 - `services/` — code shared across two or more features. Adding a screen never requires touching `features/monitor/`.
+- `services/sync_service.py` and `services/test_registry.py` have **no Dash or Plotly imports** — fully unit-testable and independently runnable.
 - `features/*/services.py` — pure business logic with no Dash or Plotly imports; fully unit-testable.
 - `features/*/figures.py` — Plotly figure builders; depend on data, not on Dash state.
 - `features/*/components.py` — Dash HTML builders; depend on data and figures, not on callbacks.
@@ -283,19 +279,21 @@ Notes:
 
 Key invariants:
 - `features/analysis/` and `features/otkph/` never import from `features/monitor/`. Cross-feature utilities live in `services/`.
-- `config.py` is the single source for all column lists (`OUTPUT_COLUMNS`, `STORE_COLUMNS`), machine names, colors, and variable mappings.
+- `config.py` is the single source for all column lists (`OUTPUT_COLUMNS`, `STORE_COLUMNS`), machine names, colors, variable mappings, and sync settings.
 - All `register_*` functions accept keyword-only arguments — missing dependencies cause a `TypeError` at startup rather than a `KeyError` at the first callback invocation.
-
-This makes the app easier to maintain, safer to change, and easier for new team members to understand.
+- Sync state is protected by a `threading.Lock`; the Dash main thread only reads a snapshot via `scheduler.get_state()`.
 
 ---
 
 ## Helpful notes
 
 - If the app says a test is not found, first verify folder and file naming format under `PROJECT_ROOT`.
-- If you move log location, only update `PROJECT_ROOT` in `config.py`.
-- If you add a new measured variable, update `config.py` (`VARIABLE_CONFIG`) and parser mapping in `log_parser.py`.
-- Auto-refresh timing uses server time (same source as the topbar clock). Browser tab throttling in the background may affect timing if the tab is minimized for long periods.
+- If you move the log location, only update `PROJECT_ROOT` in `config.py`.
+- If you move the network share, only update `SYNC_SOURCE_ROOT` in `config.py`.
+- If you add a new measured variable, update `config.py` (`VARIABLE_CONFIG`) and the parser mapping in `log_parser.py`.
+- Auto-refresh and auto-sync timing both use server wall-clock time (same source as the topbar clock).
+- The test registry (`data/test_registry.json`) is created automatically on first run — no manual setup needed.
+- The external PowerShell script (`Sync-CtendLogs.ps1`) and its Task Scheduler job are no longer needed and can be removed.
 
 ---
 

@@ -114,3 +114,10 @@ LIMIT_PALETTE = ["#E84040", "#4A90D9", "#34C47C", "#E8721A", "#B36EE8"]
 
 BAND_UPPER_LINE_COLOR = LIMIT_PALETTE[0]
 BAND_LOWER_LINE_COLOR = LIMIT_PALETTE[1]
+
+# Sync settings
+SYNC_SOURCE_ROOT = r"Z:\prstruh\ctend_pt"
+SYNC_DEST_ROOT = PROJECT_ROOT                  # same as existing logs/ folder
+SYNC_SCHEDULE_MINUTES = [20, 50]               # offset from auto-refresh (:00, :30)
+SYNC_ENABLED_BY_DEFAULT = True
+TEST_REGISTRY_PATH = os.path.join(APP_ROOT, "data", "test_registry.json")
