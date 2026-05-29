@@ -78,6 +78,7 @@ def build_analysis_layout() -> html.Div:
                                     {"label": "Room Temperature", "value": "room_temperature"},
                                     {"label": "Speed", "value": "speed"},
                                     {"label": "Torque", "value": "torque"},
+                                    {"label": "Deflection", "value": "deflection"},
                                 ],
                                 value="temperature",
                                 clearable=False,

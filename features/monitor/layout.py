@@ -54,26 +54,7 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
             html.Div(
                 className="main",
                 children=[
-                    html.Div(
-                        style={"display": "flex", "alignItems": "center", "gap": "12px"},
-                        children=[
-                            html.Div(className="section-label", children=["Current Tests Running"]),
-                            html.Div(className="divider"),
-                            html.Div(
-                                className="toggle-wrap",
-                                style={"display": "flex", "alignItems": "center", "gap": "6px", "marginBottom": "10px"},
-                                children=[
-                                    html.Div(id="sync-enabled-toggle", className="toggle on", n_clicks=0),
-                                    html.Span("Auto-sync", className="toggle-label",
-                                              style={"fontSize": "11px"}),
-                                ],
-                            ),
-                            html.Div(
-                                id="sync-status-text",
-                                style={"fontSize": "11px", "color": "var(--muted)", "marginBottom": "10px"},
-                            ),
-                        ],
-                    ),
+                    html.Div(className="section-label", children=["Current Tests Running"]),
                     html.Div(
                         className="tests-panel",
                         children=[
@@ -166,7 +147,6 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                                 ],
                             ),
                             html.Button(id="refresh-btn", className="refresh-btn", n_clicks=0, children=["Refresh"]),
-                            make_auto_refresh_toggle(),
                             html.Div(
                                 className="variable-filter",
                                 style={"marginLeft": "auto"},
@@ -181,6 +161,7 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                                             {"label": "Room Temperature", "value": "room_temperature"},
                                             {"label": "Speed", "value": "speed"},
                                             {"label": "Torque", "value": "torque"},
+                                            {"label": "Deflection", "value": "deflection"},
                                         ],
                                         value="temperature",
                                         clearable=False,
@@ -208,71 +189,30 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                         open=False,
                         children=[
                             html.Summary("Diagnostics", className="load-debug-summary"),
+                            html.Div(
+                                style={"display": "flex", "alignItems": "center", "gap": "16px", "padding": "8px 0"},
+                                children=[
+                                    make_auto_refresh_toggle(),
+                                    html.Div(className="divider"),
+                                    html.Div(
+                                        className="toggle-wrap",
+                                        children=[
+                                            html.Div(id="sync-enabled-toggle", className="toggle on", n_clicks=0),
+                                            html.Span("Auto-sync", className="toggle-label"),
+                                        ],
+                                    ),
+                                    html.Div(
+                                        id="sync-status-text",
+                                        style={"fontSize": "11px", "color": "var(--muted)"},
+                                    ),
+                                ],
+                            ),
                             html.Div(id="load-debug-panel", className="load-debug"),
                         ],
                     ),
                     make_auto_refresh_banner(),
                     html.Div(id="graphs-section-label", className="section-label", children=["Temperature Over Time"]),
                     html.Div(id="charts-grid", className="charts-grid"),
-                    html.Div(
-                        id="registry-modal-overlay",
-                        className="modal-overlay",
-                        children=[
-                            html.Div(
-                                className="modal",
-                                style={"maxWidth": "640px", "width": "90%"},
-                                children=[
-                                    html.Div(
-                                        className="modal-header",
-                                        children=[
-                                            html.Div(
-                                                html.Div("Test Registry", className="modal-title"),
-                                            ),
-                                            html.Div(
-                                                className="modal-actions",
-                                                children=[
-                                                    html.Button(
-                                                        "✕",
-                                                        id="registry-modal-close-btn",
-                                                        className="modal-close",
-                                                        n_clicks=0,
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                    html.Div(id="registry-modal-body"),
-                                    html.Div(
-                                        style={
-                                            "display": "flex",
-                                            "gap": "8px",
-                                            "alignItems": "center",
-                                            "paddingTop": "12px",
-                                            "borderTop": "1px solid var(--border)",
-                                        },
-                                        children=[
-                                            dcc.Input(
-                                                id="registry-add-input",
-                                                className="test-input",
-                                                placeholder="Test number",
-                                                type="text",
-                                                value="",
-                                                debounce=False,
-                                                style={"width": "140px"},
-                                            ),
-                                            html.Button(
-                                                "Add Active",
-                                                id="registry-add-btn",
-                                                className="refresh-btn",
-                                                n_clicks=0,
-                                                style={"fontSize": "12px"},
-                                            ),
-                                        ],
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
                     html.Div(
                         id="modal-overlay",
                         className="modal-overlay",

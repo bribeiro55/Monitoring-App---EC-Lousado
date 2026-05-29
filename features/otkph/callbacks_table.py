@@ -137,6 +137,7 @@ def register_otkph_table_callbacks(
         elapsed_sec = _build_effective_elapsed_seconds(helper, ignore_interrupted=True)
         running_labels = _running_hours_hhmm_labels(elapsed_sec)
 
+        cpc_temp_vals = pd.to_numeric(dff["cpc_temp_c"], errors="coerce") if "cpc_temp_c" in dff.columns else pd.Series([pd.NA] * len(dff))
         out = pd.DataFrame(
             {
                 "Date": ts.dt.strftime("%Y-%m-%d"),
@@ -144,6 +145,7 @@ def register_otkph_table_callbacks(
                 "Running hours": running_labels,
                 "Step": dff["step"],
                 "Speed": pd.to_numeric(dff["speed"], errors="coerce") if "speed" in dff.columns else pd.Series([pd.NA] * len(dff)),
+                "CPC Temp. (°C)": cpc_temp_vals,
             }
         )
         temp_col_idx = 1
@@ -171,6 +173,15 @@ def register_otkph_table_callbacks(
             ws_chart = wb.add_worksheet("Test Analysis")
             chart = wb.add_chart({"type": "line"})
             speed_col = int(out.columns.get_loc("Speed"))
+            cpc_col = int(out.columns.get_loc("CPC Temp. (°C)"))
+
+            chart.add_series(
+                {
+                    "name": ["Data", 0, cpc_col],
+                    "categories": ["Data", 1, running_col, last_excel_row, running_col],
+                    "values": ["Data", 1, cpc_col, last_excel_row, cpc_col],
+                }
+            )
 
             for tname in temp_col_names:
                 tcol = int(out.columns.get_loc(tname))

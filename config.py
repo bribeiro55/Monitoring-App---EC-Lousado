@@ -32,6 +32,7 @@ VARIABLE_CONFIG = {
     "room_temperature": {"col": "room_temp_c", "label": "Room Temperature", "unit": "°C"},
     "speed": {"col": "speed", "label": "Speed", "unit": "km/h"},
     "torque": {"col": "torque_nm", "label": "Torque", "unit": "Nm"},
+    "deflection": {"col": "deflection_mm", "label": "Deflection", "unit": "mm"},
 }
 
 OUTPUT_COLUMNS = [
@@ -67,6 +68,7 @@ STORE_COLUMNS = [
     "load_kg",
     "inflation_pressure_kpa",
     "room_temp_c",
+    "deflection_mm",
     "thermo_cam_1",
     "thermo_cam_2",
     "thermo_cam_3",

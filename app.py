@@ -169,6 +169,53 @@ app.layout = html.Div(
                 ),
             ],
         ),
+        html.Div(
+            id="registry-modal-overlay",
+            className="modal-overlay",
+            children=[
+                html.Div(
+                    className="modal",
+                    style={"maxWidth": "640px", "width": "90%"},
+                    children=[
+                        html.Div(
+                            className="modal-header",
+                            children=[
+                                html.Div(html.Div("Test Registry", className="modal-title")),
+                                html.Div(
+                                    className="modal-actions",
+                                    children=[
+                                        html.Button("✕", id="registry-modal-close-btn", className="modal-close", n_clicks=0),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        html.Div(id="registry-modal-body"),
+                        html.Div(
+                            style={"display": "flex", "gap": "8px", "alignItems": "center",
+                                   "paddingTop": "12px", "borderTop": "1px solid var(--border)"},
+                            children=[
+                                dcc.Input(
+                                    id="registry-add-input",
+                                    className="test-input",
+                                    placeholder="Test number",
+                                    type="text",
+                                    value="",
+                                    debounce=False,
+                                    style={"width": "140px"},
+                                ),
+                                html.Button(
+                                    "Add Active",
+                                    id="registry-add-btn",
+                                    className="refresh-btn",
+                                    n_clicks=0,
+                                    style={"fontSize": "12px"},
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
     ],
 )
 
