@@ -4,11 +4,11 @@ components:
   - name: monitoring-app
     docker:
       file: Dockerfile
+    ports:
+      - 8050
+    ingresses:
+      - host: monitoring-app-ec-lousado
     resources:
       cpu: 500m
       memory: 1Gi
     scheduled: "@release"
-    ingresses:
-      - name: web
-        host: monitoring-app-ec-lousado
-        port: 8050
