@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
 import os
+import platform
 import shutil
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,6 +42,136 @@ class SyncState:
 
 def _digits_only(s: str) -> str:
     return "".join(ch for ch in s if ch.isdigit())
+
+
+def load_credentials() -> tuple[str, str]:
+    user = os.environ.get("GTT_SERVER_USER", "")
+    password = os.environ.get("GTT_SERVER_PASS", "")
+    if not user or not password:
+        raise RuntimeError(
+            "SMB credentials missing. Set GTT_SERVER_USER and GTT_SERVER_PASS."
+        )
+    return user, password
+
+
+def find_source_folder_smb(smb_root: str, test_number: str) -> Optional[str]:
+    import smbclient
+    raw = test_number.strip()
+    if not raw:
+        return None
+    candidates = [raw]
+    digits = _digits_only(raw)
+    if digits and digits != raw:
+        candidates.append(digits)
+    try:
+        dirs = [e for e in smbclient.scandir(smb_root) if e.is_dir()]
+    except Exception:
+        return None
+    for cand in candidates:
+        suffix_dir = f"{cand}.00a".lower()
+        suffix_log = f"{cand}.log".lower()
+        for entry in dirs:
+            if entry.name.lower().endswith(suffix_dir):
+                try:
+                    for f in smbclient.scandir(entry.path):
+                        if f.is_file() and f.name.lower().endswith(suffix_log):
+                            return entry.path
+                except Exception:
+                    continue
+    return None
+
+
+def mirror_folder_smb(smb_src: str, dest: Path) -> SyncResult:
+    import smbclient
+    result = SyncResult()
+    try:
+        dest.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        result.errors += 1
+        return result
+    try:
+        src_entries = {e.name: e for e in smbclient.scandir(smb_src) if e.is_file()}
+    except Exception:
+        result.errors += 1
+        return result
+    try:
+        dest_files = {f.name: f for f in dest.iterdir() if f.is_file()}
+    except OSError:
+        dest_files = {}
+
+    for name in list(dest_files):
+        if name not in src_entries:
+            try:
+                dest_files[name].unlink()
+                result.deleted += 1
+            except OSError:
+                result.errors += 1
+
+    for name, src_e in src_entries.items():
+        dest_f = dest / name
+        try:
+            src_stat = src_e.stat()
+        except Exception:
+            result.errors += 1
+            continue
+        needs_copy = True
+        if dest_f.exists():
+            try:
+                dest_stat = dest_f.stat()
+                if (
+                    int(src_stat.st_mtime) == int(dest_stat.st_mtime)
+                    and src_stat.st_size == dest_stat.st_size
+                ):
+                    needs_copy = False
+            except OSError:
+                pass
+        if needs_copy:
+            try:
+                with smbclient.open_file(src_e.path, mode="rb") as smb_f:
+                    dest_f.write_bytes(smb_f.read())
+                os.utime(dest_f, (src_stat.st_mtime, src_stat.st_mtime))
+                result.copied += 1
+            except Exception:
+                result.errors += 1
+        else:
+            result.unchanged += 1
+    return result
+
+
+def sync_tests_smb(
+    test_numbers: List[str],
+    smb_server: str,
+    smb_share_folder: str,
+    dest_root: Path,
+) -> List[TestSyncResult]:
+    smb_root = f"//{smb_server}/{smb_share_folder}"
+    seen: set = set()
+    results: List[TestSyncResult] = []
+    for tn in test_numbers:
+        tn = tn.strip()
+        if not tn or tn in seen:
+            continue
+        seen.add(tn)
+        try:
+            src_path = find_source_folder_smb(smb_root, tn)
+            if src_path is None:
+                results.append(TestSyncResult(
+                    test_number=tn, found=False,
+                    source_folder=None, result=None, error=None,
+                ))
+                continue
+            folder_name = src_path.rstrip("/").split("/")[-1]
+            sync_result = mirror_folder_smb(src_path, dest_root / folder_name)
+            results.append(TestSyncResult(
+                test_number=tn, found=True,
+                source_folder=src_path, result=sync_result, error=None,
+            ))
+        except Exception as e:
+            results.append(TestSyncResult(
+                test_number=tn, found=False,
+                source_folder=None, result=None, error=str(e),
+            ))
+    return results
 
 
 def find_source_folder(source_root: Path, test_number: str) -> Optional[Path]:
@@ -187,12 +321,16 @@ class SyncScheduler:
         get_active_tests: Callable[[], List[str]],
         schedule_minutes: List[int] = None,
         enabled: bool = True,
+        smb_server: Optional[str] = None,
+        smb_share_folder: Optional[str] = None,
     ) -> None:
         self._source_root = source_root
         self._dest_root = dest_root
         self._get_active_tests = get_active_tests
         self._schedule_minutes = schedule_minutes if schedule_minutes is not None else [20, 50]
         self._enabled = enabled
+        self._smb_server = smb_server
+        self._smb_share_folder = smb_share_folder
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._trigger_event = threading.Event()
@@ -265,7 +403,24 @@ class SyncScheduler:
 
             try:
                 tests = self._get_active_tests()
-                results = sync_tests(tests, self._source_root, self._dest_root)
+                if platform.system() == "Windows":
+                    results = sync_tests(tests, self._source_root, self._dest_root)
+                else:
+                    import smbclient
+                    try:
+                        user, password = load_credentials()
+                        smbclient.register_session(
+                            server=self._smb_server,
+                            username=user,
+                            password=password,
+                        )
+                        logger.info("SMB session registered for %s", self._smb_server)
+                    except Exception as e:
+                        logger.error("SMB session failed: %s", e)
+                        raise
+                    results = sync_tests_smb(
+                        tests, self._smb_server, self._smb_share_folder, self._dest_root
+                    )
                 now = datetime.now()
                 self._update_next_sync_time()
                 with self._lock:

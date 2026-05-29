@@ -14,6 +14,8 @@ from config import (
     SYNC_DEST_ROOT,
     SYNC_ENABLED_BY_DEFAULT,
     SYNC_SCHEDULE_MINUTES,
+    SYNC_SERVER,
+    SYNC_SHARE_FOLDER,
     SYNC_SOURCE_ROOT,
     TEST_REGISTRY_PATH,
     VARIABLE_CONFIG,
@@ -63,6 +65,8 @@ scheduler = SyncScheduler(
     get_active_tests=registry.get_active,
     schedule_minutes=SYNC_SCHEDULE_MINUTES,
     enabled=SYNC_ENABLED_BY_DEFAULT,
+    smb_server=SYNC_SERVER,
+    smb_share_folder=SYNC_SHARE_FOLDER,
 )
 
 
