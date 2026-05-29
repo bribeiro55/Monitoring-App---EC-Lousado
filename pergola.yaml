@@ -1,0 +1,10 @@
+version: v1
+
+components:
+  - name: monitoring-app
+    docker:
+      file: Dockerfile
+    resources:
+      cpu: 500m
+      memory: 1Gi
+    scheduled: "@release"
