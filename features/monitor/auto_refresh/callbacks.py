@@ -32,11 +32,9 @@ def register_monitor_auto_refresh_callbacks(
 
     @app.callback(
         Output("auto-refresh-cycle-store", "data"),
-        Output("auto-refresh-trigger-store", "data"),
         Input("clock-interval", "n_intervals"),
         State("auto-refresh-cycle-store", "data"),
         State("auto-refresh-enabled-store", "data"),
-        State("auto-refresh-trigger-store", "data"),
         State("main-tab-store", "data"),
         *_test_input_states(),
     )
@@ -44,7 +42,6 @@ def register_monitor_auto_refresh_callbacks(
         _n_intervals,
         cycle,
         enabled,
-        trigger_count,
         tab,
         tA1,
         tA2,
@@ -60,17 +57,9 @@ def register_monitor_auto_refresh_callbacks(
             tab or "monitor",
             [tA1, tA2, tB1, tB2, tC1, tC2],
         )
-        if result.cycle == (cycle or {}) and not result.fire_refresh:
+        if result.cycle == (cycle or {}):
             raise PreventUpdate
-
-        new_trigger = int(trigger_count or 0)
-        if result.fire_refresh:
-            new_trigger += 1
-
-        if result.cycle == (cycle or {}) and new_trigger == int(trigger_count or 0):
-            raise PreventUpdate
-
-        return result.cycle, new_trigger
+        return result.cycle
 
     @app.callback(
         Output("auto-refresh-cycle-store", "data", allow_duplicate=True),
@@ -100,15 +89,4 @@ def register_monitor_auto_refresh_callbacks(
         Input("main-tab-store", "data"),
     )
     def render_auto_refresh_banner(cycle, tab):
-        cycle = cycle or {}
-        phase = cycle.get("phase")
-        dismissed = bool(cycle.get("dismissed"))
-        on_monitor = (tab or "monitor") == "monitor"
-        visible = on_monitor and phase == "countdown" and not dismissed
-
-        if not visible:
-            return "auto-refresh-banner hidden", [""]
-
-        seconds = int(cycle.get("seconds_remaining") or 0)
-        label = f"View will update in {seconds} second{'s' if seconds != 1 else ''}"
-        return "auto-refresh-banner", [label]
+        return "auto-refresh-banner hidden", [""]

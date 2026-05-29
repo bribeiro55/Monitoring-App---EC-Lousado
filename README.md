@@ -13,7 +13,7 @@ The goal of this README is to explain the app in plain language, including where
 ## How the app works (plain language)
 
 1. You add test numbers to the **Test Registry** (the document icon next to "Current Tests Running").
-2. The app **automatically syncs** the corresponding test folders from the network share (`Z:\prstruh\ctend_pt`) into a local `logs/` folder every 30 minutes.
+2. The app **automatically syncs** the corresponding test folders from the network share (`Z:\prstruh\ctend_pt`) into a local `logs/` folder at :20 and :50 each hour, and **reloads the charts automatically** within 10 seconds of each sync completing.
 3. You type test numbers into the machine/position slots on the Live Monitor and click **Refresh** to view charts.
 4. Each screen (Monitor / Analysis / O-TKPH) reads data from stores and builds charts/tables.
 5. Filters (steps, ignore stopped, limits) only change what is shown; they do not modify the original files.
@@ -65,14 +65,14 @@ The app replicates the test folder from the network share into the local `logs/`
 2. Mirrors that folder locally: copies new/changed files (comparing mtime + size), deletes files that no longer exist on the share.
 3. Logs the result (files copied, deleted, unchanged) in the Sync Status panel.
 
-### Timing offset (important)
+### Timing design
 
 | Scheduler | Fires at | Purpose |
 |---|---|---|
 | Sync | `:20` and `:50` | Copies files from share into `logs/` |
-| Auto-refresh | `:00` and `:30` | Reloads chart data from `logs/` into the UI |
+| Sync-triggered refresh | Within 10 s of sync completing | Reloads charts automatically after new data arrives |
 
-The sync always runs 10 minutes before the auto-refresh reads the files, so charts always show freshly copied data.
+Charts update within seconds of each sync completing. There is no fixed-clock fallback — use the **Refresh** button if you need to reload manually.
 
 ### Test Registry
 
@@ -120,8 +120,7 @@ Below the Diagnostics section on the Live Monitor tab you will find the Sync Sta
   - `filter_utils.py`: shared date/time parsing used by analysis and O-TKPH filters
 
 - `data/`  
-  Persisted app state. Currently holds `test_registry.json` (created automatically on first run).  
-  This folder is tracked in git via `.gitkeep` but `test_registry.json` itself is gitignored.
+  Persisted app state. Created automatically on first run. Currently holds `test_registry.json` (gitignored).
 
 - `domain/`  
   Shared data models/types that keep stored data consistent between callbacks.
@@ -147,7 +146,6 @@ Monitoring_V1/
   assets/
     style.css
   data/
-    .gitkeep
     test_registry.json          ← gitignored, created at runtime
   domain/
     models.py
@@ -210,9 +208,9 @@ Monitoring_V1/
 - Shows chart cards and modal details
 - Supports step filtering and ignore stopped
 - Uses cached parsing for speed
-- **Auto-refresh** (optional, on by default): reloads test data on a wall-clock schedule
+- **Auto-refresh** (optional, on by default): reloads charts automatically within 10 seconds of each sync completing
 - **Auto-sync** (on by default): mirrors active tests from the network share in the background
-- **Test Registry**: document icon button next to the heading opens a modal to manage active/planned tests
+- **Test Registry**: document icon button in the top bar opens a modal to manage active/planned tests — accessible from any tab
 
 #### Auto-refresh behavior
 
@@ -220,12 +218,9 @@ Auto-refresh only applies to the **Live Monitor** tab. It re-runs the same load 
 
 | Situation | What happens |
 |---|---|
-| `:00` or `:30` (server time), you are on Monitor | A warning banner appears with a live 30-second countdown, then data reloads |
-| Same time, you are on another tab | Reload runs silently in the background; no banner |
-| You click **Dismiss** during the countdown | That half-hour cycle is skipped; the next attempt is at the next `:00` or `:30` |
-| **Auto-refresh** toggle is off | The cycle is skipped silently (no banner, no reload) |
-| No test numbers typed | The cycle is skipped silently |
-| Manual **Refresh** | Works independently; still closes the expanded chart modal |
+| Sync completes (~:20 or ~:50), **Auto-refresh** toggle is on | Charts reload silently within 10 seconds |
+| Sync completes, **Auto-refresh** toggle is off | No reload |
+| Manual **Refresh** button | Always reloads immediately, regardless of toggle state |
 
 #### Auto-sync behavior
 
@@ -237,11 +232,12 @@ The background sync runs in a daemon thread and never blocks the UI.
 | **Sync Now** button clicked | Sync fires immediately, then resumes the normal schedule |
 | **Auto-sync** toggle is off | Scheduled syncs are skipped; Sync Now still works |
 | Source share unreachable | A warning is shown in the Sync Status panel; sync is skipped |
+| Test not yet on the share | Recorded as "not found"; sync retries on next cycle automatically |
 | Test removed from registry | Future syncs stop; already-copied local files are kept |
 
 Notes:
 
-- Sync fires 10 minutes before auto-refresh so charts always show fresh data.
+- Sync-triggered refresh fires within 10 seconds of sync completing, driven by the 10-second poll interval.
 - `SYNC_SOURCE_ROOT` in `config.py` is the only place to change the share path.
 - The registry is shared across all users connected to the same server instance.
 
@@ -258,6 +254,7 @@ Notes:
 - Focused on thermal camera channels
 - Uses test number lookup and parser output
 - Includes camera thresholds, frozen-period table, and export tools
+- **Excel export** includes a `CPC Temp. (°C)` column in the Data sheet and a CPC temperature line series in the Test Analysis chart (alongside the thermal camera channels and speed), for export visibility without affecting the in-app view
 - Ownership is split by concern in `features/otkph/`:
   - `layout.py` for Dash layout
   - `services.py` for pure data/filter/frozen logic
@@ -290,7 +287,8 @@ Key invariants:
 - If the app says a test is not found, first verify folder and file naming format under `PROJECT_ROOT`.
 - If you move the log location, only update `PROJECT_ROOT` in `config.py`.
 - If you move the network share, only update `SYNC_SOURCE_ROOT` in `config.py`.
-- If you add a new measured variable, update `config.py` (`VARIABLE_CONFIG`) and the parser mapping in `log_parser.py`.
+- If you add a new measured variable, update `config.py` (`VARIABLE_CONFIG`) and the parser mapping in `log_parser.py`. Adding it to `VARIABLE_CONFIG` automatically propagates it to the variable dropdowns in Monitor, Data Analysis, and the analysis data filters.
+- Available variables: Temperature, Load, Inflation Pressure, Room Temperature, Speed, Torque, Deflection.
 - Auto-refresh and auto-sync timing both use server wall-clock time (same source as the topbar clock).
 - The test registry (`data/test_registry.json`) is created automatically on first run — no manual setup needed.
 - The external PowerShell script (`Sync-CtendLogs.ps1`) and its Task Scheduler job are no longer needed and can be removed.

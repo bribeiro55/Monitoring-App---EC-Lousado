@@ -145,6 +145,7 @@ app.layout = html.Div(
         dcc.Store(id="auto-refresh-enabled-store", data=True),
         dcc.Store(id="auto-refresh-cycle-store", data={}),
         dcc.Store(id="auto-refresh-trigger-store", data=0),
+        dcc.Store(id="sync-last-seen-time-store", data=None),
         dcc.Interval(id="clock-interval", interval=1000, n_intervals=0),
         build_monitor_layout(MACHINES, _input_id),
         html.Div(

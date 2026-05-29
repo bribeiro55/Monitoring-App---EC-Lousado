@@ -103,10 +103,25 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
 
     @app.callback(
         Output("sync-status-text", "children"),
+        Output("sync-last-seen-time-store", "data"),
+        Output("auto-refresh-trigger-store", "data"),
         Input("sync-poll-interval", "n_intervals"),
+        State("sync-last-seen-time-store", "data"),
+        State("auto-refresh-trigger-store", "data"),
+        State("auto-refresh-enabled-store", "data"),
+        prevent_initial_call=True,
     )
-    def poll_sync_state(_n):
-        return _build_status_text(scheduler.get_state(), SYNC_SOURCE_ROOT)
+    def poll_sync_state(_n, last_seen, trigger_count, ar_enabled):
+        state = scheduler.get_state()
+        status_text = _build_status_text(state, SYNC_SOURCE_ROOT)
+
+        current_time_str = state.last_sync_time.isoformat() if state.last_sync_time else None
+
+        new_trigger = int(trigger_count or 0)
+        if current_time_str is not None and current_time_str != last_seen and bool(ar_enabled):
+            new_trigger += 1
+
+        return status_text, current_time_str, new_trigger
 
     @app.callback(
         Output("registry-modal-body", "children"),
