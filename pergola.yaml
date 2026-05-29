@@ -8,3 +8,7 @@ components:
       cpu: 500m
       memory: 1Gi
     scheduled: "@release"
+    ingresses:
+      - name: web
+        port: 8050
+        slug: monitoring-app-ec-lousado
