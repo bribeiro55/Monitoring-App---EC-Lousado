@@ -10,5 +10,5 @@ components:
     scheduled: "@release"
     ingresses:
       - name: web
+        host: monitoring-app-ec-lousado
         port: 8050
-        slug: monitoring-app-ec-lousado
