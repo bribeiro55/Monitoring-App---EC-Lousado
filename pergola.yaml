@@ -7,7 +7,8 @@ components:
     ports:
       - 8050
     ingresses:
-      - port: 8050
+      - host: monitoring-app-ec-lousado.apps.pergola.continental-tires.com
+        port: 8050
     resources:
       cpu: 500m
       memory: 1Gi
