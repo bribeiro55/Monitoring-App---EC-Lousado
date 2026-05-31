@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from datetime import datetime
 from typing import Optional
 
@@ -97,6 +98,66 @@ def _build_registry_body(entries):
     )]
 
 
+def _build_sync_diagnostics(state, source_root: str) -> list:
+    import os
+    on_windows = platform.system() == "Windows"
+    conn_label = "Windows · local share" if on_windows else "Linux · SMB + credentials"
+    source_ok = os.path.isdir(source_root) if on_windows else None  # SMB reachability checked via sync results
+
+    source_color = "var(--muted)"
+    if on_windows:
+        source_color = "#34C47C" if source_ok else "#E84040"
+
+    rows = [
+        html.Div(
+            style={"display": "flex", "alignItems": "center", "gap": "8px", "marginBottom": "6px"},
+            children=[
+                html.Span("Source:", style={"color": "var(--muted)", "minWidth": "52px"}),
+                html.Span(source_root, style={"fontFamily": "'DM Mono', monospace", "color": source_color}),
+                html.Span(f"[{conn_label}]", style={"color": "var(--muted)", "marginLeft": "4px"}),
+            ],
+        )
+    ]
+
+    if state is None or not state.results:
+        rows.append(html.Span("No sync results yet.", style={"color": "var(--muted)"}))
+        return rows
+
+    if state.error:
+        rows.append(
+            html.Div(
+                style={"color": "#E84040", "marginBottom": "4px"},
+                children=[f"⚠  Sync error: {state.error}"],
+            )
+        )
+
+    for r in state.results:
+        tn = r.test_number
+        if r.error:
+            icon, detail, color = "✗", f"error: {r.error}", "#E84040"
+        elif not r.found:
+            icon, detail, color = "–", "not found on share", "var(--muted)"
+        else:
+            res = r.result
+            detail = f"{res.copied} copied · {res.unchanged} unchanged · {res.deleted} deleted"
+            if res.errors:
+                detail += f" · {res.errors} file error(s)"
+            icon, color = "✓", "#34C47C"
+
+        rows.append(
+            html.Div(
+                style={"display": "flex", "alignItems": "center", "gap": "8px", "padding": "1px 0"},
+                children=[
+                    html.Span(icon, style={"color": color, "width": "12px", "flexShrink": "0"}),
+                    html.Span(tn, style={"fontFamily": "'DM Mono', monospace", "minWidth": "80px"}),
+                    html.Span(detail, style={"color": "var(--muted)"}),
+                ],
+            )
+        )
+
+    return rows
+
+
 # --- registration ------------------------------------------------------------
 
 def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> None:
@@ -105,6 +166,7 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
         Output("sync-status-text", "children"),
         Output("sync-last-seen-time-store", "data"),
         Output("auto-refresh-trigger-store", "data"),
+        Output("sync-diagnostics", "children"),
         Input("sync-poll-interval", "n_intervals"),
         State("sync-last-seen-time-store", "data"),
         State("auto-refresh-trigger-store", "data"),
@@ -114,6 +176,7 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
     def poll_sync_state(_n, last_seen, trigger_count, ar_enabled):
         state = scheduler.get_state()
         status_text = _build_status_text(state, SYNC_SOURCE_ROOT)
+        diagnostics = _build_sync_diagnostics(state, SYNC_SOURCE_ROOT)
 
         current_time_str = state.last_sync_time.isoformat() if state.last_sync_time else None
 
@@ -121,7 +184,7 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
         if current_time_str is not None and current_time_str != last_seen and bool(ar_enabled):
             new_trigger += 1
 
-        return status_text, current_time_str, new_trigger
+        return status_text, current_time_str, new_trigger, diagnostics
 
     @app.callback(
         Output("registry-modal-body", "children"),
@@ -144,6 +207,15 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
         new_val = not bool(current)
         scheduler.set_enabled(new_val)
         return "toggle on" if new_val else "toggle", new_val
+
+    @app.callback(
+        Output("sync-status-text", "children", allow_duplicate=True),
+        Input("sync-now-btn", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def trigger_sync_now(_n_clicks):
+        scheduler.trigger_now()
+        return "Syncing now..."
 
     @app.callback(
         Output("registry-modal-overlay", "className"),
