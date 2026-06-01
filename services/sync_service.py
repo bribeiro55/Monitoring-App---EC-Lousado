@@ -63,7 +63,7 @@ def find_source_folder_smb(smb_root: str, test_number: str) -> Optional[str]:
     digits = _digits_only(raw)
     if digits and digits != raw:
         candidates.append(digits)
-        dirs = [e for e in smbclient.scandir(smb_root) if e.is_dir()]
+    dirs = [e for e in smbclient.scandir(smb_root) if e.is_dir()]
     for cand in candidates:
         suffix_dir = f"{cand}.00a".lower()
         suffix_log = f"{cand}.log".lower()

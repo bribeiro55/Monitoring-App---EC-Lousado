@@ -12,3 +12,8 @@ components:
     resources:
       cpu: 500m
       memory: 1Gi
+    env:                          
+      - name: GTT_SERVER_USER
+        config-ref: GTT_SERVER_USER
+      - name: GTT_SERVER_PASS
+        config-ref: GTT_SERVER_PASS
