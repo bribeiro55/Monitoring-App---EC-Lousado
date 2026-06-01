@@ -21,6 +21,7 @@ from config import (
     SYNC_SCHEDULE_MINUTES,
     SYNC_SERVER,
     SYNC_SHARE_FOLDER,
+    SYNC_SHARE_SUBFOLDER,
     SYNC_SOURCE_ROOT,
     TEST_REGISTRY_PATH,
     VARIABLE_CONFIG,
@@ -72,6 +73,7 @@ scheduler = SyncScheduler(
     enabled=SYNC_ENABLED_BY_DEFAULT,
     smb_server=SYNC_SERVER,
     smb_share_folder=SYNC_SHARE_FOLDER,
+    smb_share_subfolder=SYNC_SHARE_SUBFOLDER,
 )
 
 

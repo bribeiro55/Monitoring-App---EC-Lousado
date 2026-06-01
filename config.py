@@ -120,7 +120,8 @@ BAND_LOWER_LINE_COLOR = LIMIT_PALETTE[1]
 # Sync settings
 SYNC_SOURCE_ROOT = r"Z:\prstruh\ctend_pt"
 SYNC_SERVER = "hjimssvip.tiretech.contiwan.com"
-SYNC_SHARE_FOLDER = "prstruh/ctend_pt"
+SYNC_SHARE_FOLDER = "prstruh"          # just the share name
+SYNC_SOURCE_ROOT = "ctend_pt"          # the subfolder path within the share
 SYNC_DEST_ROOT = PROJECT_ROOT                  # same as existing logs/ folder
 SYNC_SCHEDULE_MINUTES = [20, 50]               # offset from auto-refresh (:00, :30)
 SYNC_ENABLED_BY_DEFAULT = True

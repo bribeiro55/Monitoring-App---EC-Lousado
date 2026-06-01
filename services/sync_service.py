@@ -139,9 +139,10 @@ def sync_tests_smb(
     test_numbers: List[str],
     smb_server: str,
     smb_share_folder: str,
+    smb_share_subfolder: str,
     dest_root: Path,
 ) -> List[TestSyncResult]:
-    smb_root = f"//{smb_server}/{smb_share_folder}"
+    smb_root = f"//{smb_server}/{smb_share_folder}/{smb_share_subfolder}"
     seen: set = set()
     results: List[TestSyncResult] = []
     for tn in test_numbers:
@@ -320,6 +321,7 @@ class SyncScheduler:
         enabled: bool = True,
         smb_server: Optional[str] = None,
         smb_share_folder: Optional[str] = None,
+        smb_share_subfolder: Optional[str] = None,
     ) -> None:
         self._source_root = source_root
         self._dest_root = dest_root
@@ -328,6 +330,7 @@ class SyncScheduler:
         self._enabled = enabled
         self._smb_server = smb_server
         self._smb_share_folder = smb_share_folder
+        self._smb_share_subfolder = smb_share_subfolder
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._trigger_event = threading.Event()
@@ -416,7 +419,7 @@ class SyncScheduler:
                         logger.error("SMB session failed: %s", e)
                         raise
                     results = sync_tests_smb(
-                        tests, self._smb_server, self._smb_share_folder, self._dest_root
+                        tests, self._smb_server, self._smb_share_folder, self._smb_share_subfolder, self._dest_root
                     )
                 now = datetime.now()
                 self._update_next_sync_time()
