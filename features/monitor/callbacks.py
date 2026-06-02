@@ -19,7 +19,7 @@ from features.monitor.components import (
     make_step_legend,
 )
 from features.monitor.log_loading import load_logs_for_test_inputs
-from features.monitor.callbacks_sync import register_sync_callbacks
+from features.monitor.callbacks_registry import register_registry_callbacks
 
 
 def register_monitor_callbacks(
@@ -35,8 +35,6 @@ def register_monitor_callbacks(
     cached_parse_log,
     DISPLAY_TO_MACHINE_ID,
     registry=None,
-    scheduler=None,
-    SYNC_SOURCE_ROOT="",
 ) -> None:
     _input_id = input_id_fn
 
@@ -604,6 +602,6 @@ def register_monitor_callbacks(
         filename = f"{safe_test or 'test'}_{safe_slot}_{safe_var}.csv"
         return dcc.send_data_frame(out.to_csv, filename, index=False)
 
-    if registry is not None and scheduler is not None:
-        register_sync_callbacks(app, registry=registry, scheduler=scheduler, SYNC_SOURCE_ROOT=SYNC_SOURCE_ROOT)
+    if registry is not None:
+        register_registry_callbacks(app, registry=registry)
 

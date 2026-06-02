@@ -5,21 +5,18 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Sequence
 
 COUNTDOWN_SECONDS = 30
-BOUNDARY_OPEN_GRACE_SECONDS = 3
+BOUNDARY_OPEN_GRACE_SECONDS = 5
 
 
 def boundary_key(now: datetime) -> str:
-    if now.minute < 10:
-        prev = now - timedelta(hours=1)
-        return prev.replace(minute=40, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M")
-    elif now.minute < 40:
-        return now.replace(minute=10, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M")
+    if now.minute < 30:
+        return now.replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M")
     else:
-        return now.replace(minute=40, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M")
+        return now.replace(minute=30, second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M")
 
 
 def is_boundary_opening(now: datetime) -> bool:
-    return now.minute in (10, 40) and now.second < BOUNDARY_OPEN_GRACE_SECONDS
+    return now.minute in (0, 30) and now.second < BOUNDARY_OPEN_GRACE_SECONDS
 
 
 def has_any_test_input(values: Sequence[Optional[str]]) -> bool:

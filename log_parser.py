@@ -69,7 +69,7 @@ def _parse_locale_timestamp_strings(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, format=_RAW_TS_FORMAT, errors="coerce", utc=False)
 
 
-def parse_log_header_metadata(filepath: str) -> Dict[str, Optional[str]]:
+def parse_log_header_metadata(filepath: str, *, _content: str | None = None) -> Dict[str, Optional[str]]:
     """
     Extract lightweight metadata from fixed-format header records.
 
@@ -81,42 +81,47 @@ def parse_log_header_metadata(filepath: str) -> Dict[str, Optional[str]]:
     added later without changing parse_log_file() output columns.
     """
     out: Dict[str, Optional[str]] = {"test_name": None, "tire_size": None}
-    if not os.path.exists(filepath):
+    if _content is None and not os.path.exists(filepath):
         return out
 
     try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                # Header block ends before the semicolon/tab data table starts.
-                if re.match(r"^\s*Pos\s*(;|\t)", line, re.IGNORECASE):
-                    break
+        lines = _content.splitlines(keepends=True) if _content is not None else _read_lines_local(filepath)
+        for line in lines:
+            # Header block ends before the semicolon/tab data table starts.
+            if re.match(r"^\s*Pos\s*(;|\t)", line, re.IGNORECASE):
+                break
 
-                m = _HEADER_REC_RE.match(line.rstrip("\n"))
-                if not m:
-                    continue
-                rec_type = m.group(1)
-                payload = (m.group(2) or "").strip()
-                if not payload:
-                    continue
+            m = _HEADER_REC_RE.match(line.rstrip("\n"))
+            if not m:
+                continue
+            rec_type = m.group(1)
+            payload = (m.group(2) or "").strip()
+            if not payload:
+                continue
 
-                if rec_type == "0101" and out["test_name"] is None:
-                    name_match = re.match(r"\s*([A-Za-z][A-Za-z0-9\s/_().,+&-]*?)\s{2,}\d", payload)
-                    if name_match:
-                        out["test_name"] = re.sub(r"\s+", " ", name_match.group(1).strip())
+            if rec_type == "0101" and out["test_name"] is None:
+                name_match = re.match(r"\s*([A-Za-z][A-Za-z0-9\s/_().,+&-]*?)\s{2,}\d", payload)
+                if name_match:
+                    out["test_name"] = re.sub(r"\s+", " ", name_match.group(1).strip())
 
-                if rec_type == "0301" and out["tire_size"] is None:
-                    for pat in _TIRE_SIZE_PATTERNS:
-                        tsm = pat.search(payload)
-                        if tsm:
-                            out["tire_size"] = re.sub(r"\s+", " ", tsm.group(0).strip()).upper()
-                            break
+            if rec_type == "0301" and out["tire_size"] is None:
+                for pat in _TIRE_SIZE_PATTERNS:
+                    tsm = pat.search(payload)
+                    if tsm:
+                        out["tire_size"] = re.sub(r"\s+", " ", tsm.group(0).strip()).upper()
+                        break
 
-                if out["test_name"] and out["tire_size"]:
-                    break
+            if out["test_name"] and out["tire_size"]:
+                break
     except OSError:
         return out
 
     return out
+
+
+def _read_lines_local(filepath: str) -> list:
+    with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        return f.readlines()
 
 
 def _digits_only(s: object) -> str:
@@ -222,7 +227,7 @@ def _detect_dot_date_format(sample_dates: pd.Series) -> bool:
     return bool(dot_match.any())
 
 
-def parse_log_file(filepath: str) -> pd.DataFrame:
+def parse_log_file(filepath: str, *, _content: str | None = None) -> pd.DataFrame:
     """
     Parse a raw .log file into a cleaned DataFrame ( O-TKPH / new machine export).
 
@@ -240,11 +245,12 @@ def parse_log_file(filepath: str) -> pd.DataFrame:
 
     invalid_marker: True if legacy date+time text or raw timestamp contains 'DATA NOT VALID' (case-insensitive).
     """
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(filepath)
-
-    with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-        lines = f.readlines()
+    if _content is not None:
+        lines = _content.splitlines(keepends=True)
+    else:
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(filepath)
+        lines = _read_lines_local(filepath)
 
     header_idx = None
     header_line = None

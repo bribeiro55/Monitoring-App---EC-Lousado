@@ -1,9 +1,17 @@
 import os
+import platform
 
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-#PROJECT_ROOT = r"Z:\prstruh\ctend_pt"
-PROJECT_ROOT = os.path.join(APP_ROOT, "logs")  
+
+SMB_SERVER = "hjimssvip.tiretech.contiwan.com"
+SMB_SHARE  = "hnv1-hs-ge-groups"
+SMB_PATH   = "prstruh/ctend_pt"
+
+if platform.system() == "Windows":
+    PROJECT_ROOT = r"Z:\prstruh\ctend_pt"
+else:
+    PROJECT_ROOT = f"//{SMB_SERVER}/{SMB_SHARE}/{SMB_PATH}"
 
 
 MACHINES = ["Machine 7900", "Machine 7950", "Machine 7960"]
@@ -117,12 +125,4 @@ LIMIT_PALETTE = ["#E84040", "#4A90D9", "#34C47C", "#E8721A", "#B36EE8"]
 BAND_UPPER_LINE_COLOR = LIMIT_PALETTE[0]
 BAND_LOWER_LINE_COLOR = LIMIT_PALETTE[1]
 
-# Sync settings
-SYNC_SOURCE_ROOT = r"Z:\prstruh\ctend_pt"
-SYNC_SERVER = "hjimssvip.tiretech.contiwan.com"
-SYNC_SHARE_FOLDER = "hnv1-hs-ge-groups"
-SYNC_SHARE_SUBFOLDER = "prstruh/ctend_pt"         # the subfolder path within the share
-SYNC_DEST_ROOT = PROJECT_ROOT                  # same as existing logs/ folder
-SYNC_SCHEDULE_MINUTES = [20, 50]               # offset from auto-refresh (:00, :30)
-SYNC_ENABLED_BY_DEFAULT = True
 TEST_REGISTRY_PATH = os.path.join(APP_ROOT, "data", "test_registry.json")

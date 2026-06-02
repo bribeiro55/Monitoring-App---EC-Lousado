@@ -1,10 +1,11 @@
 import logging
+import os
+import platform
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
-import os
-import pathlib
 
 from dash import Dash, dcc, html
 from flask_caching import Cache
@@ -15,24 +16,24 @@ from config import (
     MACHINE_BADGE,
     MACHINES,
     PROJECT_ROOT,
+    SMB_SERVER,
     STEP_COLORS,
-    SYNC_DEST_ROOT,
-    SYNC_ENABLED_BY_DEFAULT,
-    SYNC_SCHEDULE_MINUTES,
-    SYNC_SERVER,
-    SYNC_SHARE_FOLDER,
-    SYNC_SHARE_SUBFOLDER,
-    SYNC_SOURCE_ROOT,
     TEST_REGISTRY_PATH,
     VARIABLE_CONFIG,
 )
 from log_parser import parse_log_file, parse_log_header_metadata
 from services.test_registry import TestRegistry
-from services.sync_service import SyncScheduler
 
 from features.analysis.layout import build_analysis_layout
 from features.otkph import build_otkph_layout, register_otkph_callbacks
-from services.log_service import build_cached_parse_log, find_log_path_for_test_number
+from services.log_service import (
+    build_cached_parse_log,
+    build_cached_parse_log_smb,
+    find_log_path_for_test_number,
+    find_log_path_smb,
+    parse_log_file_smb,
+    parse_log_header_metadata_smb,
+)
 
 from features.monitor.auto_refresh import register_monitor_auto_refresh_callbacks
 from features.monitor.callbacks import register_monitor_callbacks
@@ -60,21 +61,30 @@ cache = Cache(
 )
 os.makedirs(os.path.join(APP_ROOT, ".cache"), exist_ok=True)
 
-cached_parse_log = build_cached_parse_log(cache, parse_log_file)
+if platform.system() == "Windows":
+    _find_log_path = lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT)
+    _parse_log_fn = parse_log_file
+    _parse_meta_fn = parse_log_header_metadata
+    cached_parse_log = build_cached_parse_log(cache, _parse_log_fn)
+else:
+    _smb_user = os.environ.get("GTT_SERVER_USER", "")
+    _smb_pass = os.environ.get("GTT_SERVER_PASS", "")
+    if _smb_user and _smb_pass:
+        try:
+            import smbclient as _smbc
+            _smbc.register_session(server=SMB_SERVER, username=_smb_user, password=_smb_pass)
+            logging.getLogger(__name__).info("SMB session registered for %s", SMB_SERVER)
+        except Exception as _e:
+            logging.getLogger(__name__).warning("SMB session failed at startup: %s", _e)
+    else:
+        logging.getLogger(__name__).warning("GTT_SERVER_USER / GTT_SERVER_PASS not set — SMB reads will fail")
+    _find_log_path = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)
+    _parse_log_fn = parse_log_file_smb
+    _parse_meta_fn = parse_log_header_metadata_smb
+    cached_parse_log = build_cached_parse_log_smb(cache, _parse_log_fn)
 
 registry = TestRegistry(TEST_REGISTRY_PATH)
 registry.load()
-
-scheduler = SyncScheduler(
-    source_root=pathlib.Path(SYNC_SOURCE_ROOT),
-    dest_root=pathlib.Path(SYNC_DEST_ROOT),
-    get_active_tests=registry.get_active,
-    schedule_minutes=SYNC_SCHEDULE_MINUTES,
-    enabled=SYNC_ENABLED_BY_DEFAULT,
-    smb_server=SYNC_SERVER,
-    smb_share_folder=SYNC_SHARE_FOLDER,
-    smb_share_subfolder=SYNC_SHARE_SUBFOLDER,
-)
 
 
 app.layout = html.Div(
@@ -156,7 +166,6 @@ app.layout = html.Div(
         dcc.Store(id="auto-refresh-enabled-store", data=True),
         dcc.Store(id="auto-refresh-cycle-store", data={}),
         dcc.Store(id="auto-refresh-trigger-store", data=0),
-        dcc.Store(id="sync-last-seen-time-store", data=None),
         dcc.Interval(id="clock-interval", interval=1000, n_intervals=0),
         build_monitor_layout(MACHINES, _input_id),
         html.Div(
@@ -238,13 +247,11 @@ register_monitor_callbacks(
     MACHINE_BADGE=MACHINE_BADGE,
     STEP_COLORS=STEP_COLORS,
     input_id_fn=_input_id,
-    find_log_path_for_test_number=lambda test_number: find_log_path_for_test_number(test_number, PROJECT_ROOT),
-    parse_log_header_metadata=parse_log_header_metadata,
+    find_log_path_for_test_number=_find_log_path,
+    parse_log_header_metadata=_parse_meta_fn,
     cached_parse_log=cached_parse_log,
     DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
     registry=registry,
-    scheduler=scheduler,
-    SYNC_SOURCE_ROOT=SYNC_SOURCE_ROOT,
 )
 
 register_monitor_auto_refresh_callbacks(
@@ -258,18 +265,16 @@ register_navigation_callbacks(app)
 register_analysis_callbacks(
     app,
     VARIABLE_CONFIG=VARIABLE_CONFIG,
-    find_log_path_for_test_number=lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT),
+    find_log_path_for_test_number=_find_log_path,
     cached_parse_log=cached_parse_log,
 )
 
 register_otkph_callbacks(
     app,
     step_colors=STEP_COLORS,
-    find_log_path=lambda test_number: find_log_path_for_test_number(test_number, PROJECT_ROOT),
+    find_log_path=_find_log_path,
     cached_parse=cached_parse_log,
 )
-
-scheduler.start()
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=8050)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from dash import Input, Output, State
+from dash import Input, Output, State, no_update
 from dash.exceptions import PreventUpdate
 
 from features.monitor.auto_refresh.schedule import (
@@ -81,6 +81,17 @@ def register_monitor_auto_refresh_callbacks(
     def toggle_auto_refresh(_n_clicks, current):
         new_val = not bool(current) if _n_clicks else bool(current)
         return new_val, "toggle on" if new_val else "toggle"
+
+    @app.callback(
+        Output("auto-refresh-trigger-store", "data"),
+        Input("auto-refresh-cycle-store", "data"),
+        State("auto-refresh-trigger-store", "data"),
+        prevent_initial_call=True,
+    )
+    def fire_refresh_on_cycle(cycle, current_trigger):
+        if not cycle or cycle.get("phase") != "completed":
+            raise PreventUpdate
+        return int(current_trigger or 0) + 1
 
     @app.callback(
         Output("auto-refresh-banner", "className"),
