@@ -146,6 +146,9 @@ def fill_occupation(
     try:
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), keep_vba=True)
+        wb._external_links = []  # Strip external links that openpyxl cannot round-trip
+                             # faithfully — prevents Excel's "repaired records" prompt.
+                             # Power BI connections are unaffected (stored in Power BI, not here).
     except ImportError:
         return "openpyxl is not installed. Run: pip install openpyxl"
     except Exception as exc:
