@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from datetime import date, timedelta
-from typing import List
+from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -16,13 +16,32 @@ _log = logging.getLogger(__name__)
 
 PATHS_JSON = os.path.join(APP_ROOT, "occupation_paths.json")
 
+STOP_REASONS = [
+    "Mandatory inspection (3rd shift/Weekend)",
+    "Mandatory inspection (Week)",
+    "Mechanical downtime",
+    "Electrical downtime",
+    "Software downtime",
+    "Infrastructure downtime",
+    "Hydraulic downtime",
+    "Pneumatic downtime",
+    "Tire speed compatibility",
+    "Preventive Maintenance",
+    "Test planned activity",
+    "Calibration",
+    "No tires available",
+    "EC Shutdown",
+]
+
 _MONTH_SHEET = {
     1: "JANUARY", 2: "FEBRUARY", 3: "MARCH", 4: "APRIL",
     5: "MAY", 6: "JUNE", 7: "JULY", 8: "AUGUST",
     9: "SEPTEMBER", 10: "OCTOBER", 11: "NOVEMBER", 12: "DECEMBER",
 }
 
-_POS_COL = {1: "G", 2: "L"}
+# Column letters by position
+_POS_BREAK_COL  = {1: "G", 2: "L"}  # break intervals
+_POS_REASON_COL = {1: "E", 2: "J"}  # stop reason
 
 
 def _load_paths() -> dict:
@@ -98,9 +117,11 @@ def fill_occupation(
     position: int,
     dates: List[date],
     df: pd.DataFrame,
+    reasons: Optional[Dict[str, str]] = None,
 ) -> str:
-    """Read the .xlsm, fill break data for each date/position, write back.
+    """Read the .xlsm, fill break intervals (G/L) and stop reasons (E/J), write back.
 
+    reasons: mapping of date.isoformat() → reason string (may be None or partial).
     Returns a human-readable status string (success or error).
     """
     paths = _load_paths()
@@ -108,12 +129,13 @@ def fill_occupation(
     if not rel_path:
         return f"No Excel path configured for {machine_id}."
 
-    col_letter = _POS_COL.get(position)
-    if not col_letter:
+    break_col = _POS_BREAK_COL.get(position)
+    reason_col = _POS_REASON_COL.get(position)
+    if not break_col or not reason_col:
         return f"No column configured for position {position}."
 
-    # Filter DataFrame to the given position
     pos_df = df[df["position"] == position] if "position" in df.columns else df
+    reasons = reasons or {}
 
     try:
         raw_bytes = read_excel_bytes(rel_path)
@@ -160,9 +182,16 @@ def fill_occupation(
             continue
 
         break_str = detect_breaks(pos_df, d)
-        ws[f"{col_letter}{target_row}"] = break_str
+        ws[f"{break_col}{target_row}"] = break_str
+
+        reason = reasons.get(d.isoformat(), "")
+        ws[f"{reason_col}{target_row}"] = reason
+
         filled += 1
-        _log.info("Wrote break data for %s pos%d @ %s row %d", machine_id, position, date_str, target_row)
+        _log.info(
+            "Wrote occupation data for %s pos%d @ %s row %d | reason=%r",
+            machine_id, position, date_str, target_row, reason,
+        )
 
     buf = io.BytesIO()
     try:

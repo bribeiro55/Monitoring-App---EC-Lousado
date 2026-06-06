@@ -180,12 +180,9 @@ def register_sync_callbacks(app, *, registry, scheduler, SYNC_SOURCE_ROOT) -> No
 
         current_time_str = state.last_sync_time.isoformat() if state.last_sync_time else None
 
-        should_trigger = (
-            current_time_str is not None
-            and current_time_str != last_seen
-            and bool(ar_enabled)
-        )
-        new_trigger = int(trigger_count or 0) + 1 if should_trigger else no_update
+        new_trigger = int(trigger_count or 0)
+        if current_time_str is not None and current_time_str != last_seen and bool(ar_enabled):
+            new_trigger += 1
 
         return status_text, current_time_str, new_trigger, diagnostics
 
