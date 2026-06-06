@@ -7,11 +7,12 @@ import pandas as pd
 from dash import dcc, html
 
 from services.chart_utils import _downsample
-from config import MACHINE_ID_TO_LABEL, POSITION_LABELS, POS_COLORS, VARIABLE_CONFIG
+from config import DISPLAY_TO_MACHINE_ID, MACHINE_ID_TO_LABEL, POSITION_LABELS, POS_COLORS, VARIABLE_CONFIG
 from features.monitor.data import _df_after_ignore_stopped, _filter_by_steps, _placement_key, _rows_to_df
 from features.monitor.figures import _runtime_hhmm_for_df, build_summary_stats, build_temperature_figure
-from features.monitor.icons import _ICON_EMPTY_CHART, _ICON_EXPAND, ICON_REGISTRY, ICON_SYNC
+from features.monitor.icons import _ICON_EMPTY_CHART, _ICON_EXPAND, ICON_CLOCK, ICON_REGISTRY, ICON_SYNC
 from features.monitor.layout import make_empty_state, make_expand_button
+from features.monitor.occupation.layout import make_occupation_button
 
 
 def make_modal_stats(stats: dict, var_cfg: dict, run_time: str) -> List[html.Div]:
@@ -542,6 +543,9 @@ def make_chart_panel(
                         style={"display": "flex", "alignItems": "center", "gap": "8px"},
                         children=[
                             html.Span(className="test-tag", children=[test_number]),
+                            make_occupation_button(
+                                DISPLAY_TO_MACHINE_ID[machine_label], position, ICON_CLOCK
+                            ),
                             make_expand_button(slot_key, _ICON_EXPAND),
                         ],
                     ),

@@ -13,6 +13,20 @@ if platform.system() == "Windows":
 else:
     PROJECT_ROOT = f"//{SMB_SERVER}/{SMB_SHARE}/{SMB_PATH}"
 
+OCCUPATION_SMB_SERVER = "lofs010.tiretech2.contiwan.com"
+OCCUPATION_SMB_SHARE  = "cmip_groups"
+
+if platform.system() == "Windows":
+    OCCUPATION_ROOT = r"O:\\"
+else:
+    OCCUPATION_ROOT = f"//{OCCUPATION_SMB_SERVER}/{OCCUPATION_SMB_SHARE}"
+
+OCCUPATION_EXCEL_PATHS = {
+    "M7900": "LOG-EVALUATION_CENTER/9-TTT/2. Occupation Test Machine/M7900/1027/Occupation AGRO Test Machine.xlsm",
+    "M7950": "LOG-EVALUATION_CENTER/9-TTT/2. Occupation Test Machine/M7950/1027/Occupation OTR Test Machine.xlsm",
+    "M7960": "LOG-EVALUATION_CENTER/9-TTT/2. Occupation Test Machine/M7960/1027/Occupation M7960 Test Machine.xlsm",
+}
+
 
 MACHINES = ["Machine 7900", "Machine 7950", "Machine 7960"]
 POSITION_LABELS = {1: "Position 1", 2: "Position 2"}

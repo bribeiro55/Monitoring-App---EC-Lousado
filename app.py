@@ -15,6 +15,7 @@ from config import (
     DISPLAY_TO_MACHINE_ID,
     MACHINE_BADGE,
     MACHINES,
+    OCCUPATION_SMB_SERVER,
     PROJECT_ROOT,
     SMB_SERVER,
     STEP_COLORS,
@@ -37,6 +38,7 @@ from services.log_service import (
 
 from features.monitor.auto_refresh import register_monitor_auto_refresh_callbacks
 from features.monitor.callbacks import register_monitor_callbacks
+from features.monitor.occupation.callbacks import register_occupation_callbacks
 from features.navigation.callbacks import register_navigation_callbacks
 from features.analysis.callbacks import register_analysis_callbacks
 from features.monitor.layout import _input_id, build_monitor_layout
@@ -76,6 +78,11 @@ else:
             logging.getLogger(__name__).info("SMB session registered for %s", SMB_SERVER)
         except Exception as _e:
             logging.getLogger(__name__).warning("SMB session failed at startup: %s", _e)
+        try:
+            _smbc.register_session(server=OCCUPATION_SMB_SERVER, username=_smb_user, password=_smb_pass)
+            logging.getLogger(__name__).info("SMB session registered for %s", OCCUPATION_SMB_SERVER)
+        except Exception as _e:
+            logging.getLogger(__name__).warning("Occupation SMB session failed at startup: %s", _e)
     else:
         logging.getLogger(__name__).warning("GTT_SERVER_USER / GTT_SERVER_PASS not set — SMB reads will fail")
     _find_log_path = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)
@@ -252,6 +259,15 @@ register_monitor_callbacks(
     cached_parse_log=cached_parse_log,
     DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
     registry=registry,
+)
+
+register_occupation_callbacks(
+    app,
+    MACHINES=MACHINES,
+    DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
+    input_id_fn=_input_id,
+    find_log_path=_find_log_path,
+    cached_parse_log=cached_parse_log,
 )
 
 register_monitor_auto_refresh_callbacks(

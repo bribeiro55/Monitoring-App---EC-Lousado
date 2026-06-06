@@ -46,6 +46,12 @@ _ICON_TAB_OTKPH = _svg_data_uri(
 
 _img_tab_style: dict = {"width": "14px", "height": "14px", "display": "block", "opacity": "0.85"}
 
+ICON_CLOCK = _svg_data_uri(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" '
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+    'viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/>'
+    '<polyline points="12 6 12 12 16 14"/></svg>'
+)
 ICON_REGISTRY = _svg_data_uri(
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" '
     'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
