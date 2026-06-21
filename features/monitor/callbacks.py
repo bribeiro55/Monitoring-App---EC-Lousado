@@ -585,7 +585,7 @@ def register_monitor_callbacks(
 
         out = pd.DataFrame(
             {
-                "Pos": df_visible["position"],
+                "Position": df_visible["position"],
                 "Date": df_visible["timestamp"].dt.strftime("%Y-%m-%d"),
                 "Time": df_visible["timestamp"].dt.strftime("%H:%M:%S"),
                 value_label: pd.to_numeric(df_visible[value_col], errors="coerce"),
@@ -599,8 +599,8 @@ def register_monitor_callbacks(
         safe_test = "".join(ch for ch in test_no if ch.isalnum() or ch in ("-", "_"))
         safe_slot = "".join(ch for ch in slot_key.replace("|", "_") if ch.isalnum() or ch in ("-", "_"))
         safe_var = "".join(ch for ch in selected_var if ch.isalnum() or ch in ("-", "_"))
-        filename = f"{safe_test or 'test'}_{safe_slot}_{safe_var}.csv"
-        return dcc.send_data_frame(out.to_csv, filename, index=False)
+        filename = f"{safe_test or 'test'}_{safe_slot}_{safe_var}.xlsx"
+        return dcc.send_data_frame(out.to_excel, filename, index=False, engine="openpyxl")
 
     if registry is not None:
         register_registry_callbacks(app, registry=registry)

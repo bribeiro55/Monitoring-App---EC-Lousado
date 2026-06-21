@@ -32,6 +32,13 @@ def read_excel_bytes(rel_path: str) -> bytes:
         return fh.read()
 
 
+def get_win_path(rel_path: str) -> "str | None":
+    """Return the Windows mapped-drive path for rel_path, or None on non-Windows."""
+    if platform.system() != "Windows":
+        return None
+    return "O:\\" + rel_path.replace("/", "\\")
+
+
 def write_excel_bytes(rel_path: str, data: bytes) -> None:
     """Write raw bytes back to the Excel file at rel_path (relative to share root)."""
     if platform.system() == "Windows":

@@ -4,13 +4,16 @@ import io
 import json
 import logging
 import os
+import platform
+import re
+import zipfile
 from datetime import date, timedelta
 from typing import Dict, List, Optional
 
 import pandas as pd
 
 from config import APP_ROOT, OCCUPATION_EXCEL_PATHS
-from features.monitor.occupation.smb_excel import read_excel_bytes, write_excel_bytes
+from features.monitor.occupation.smb_excel import get_win_path, read_excel_bytes, write_excel_bytes
 
 _log = logging.getLogger(__name__)
 
@@ -112,51 +115,143 @@ def dates_in_range(start: date, end: date) -> List[date]:
     return result
 
 
-def fill_occupation(
-    machine_id: str,
-    position: int,
+def _find_date_row_xlwings(ws, date_str: str) -> "int | None":
+    """Return the 1-based row number in column B that matches date_str, or None."""
+    last_row = ws.cells.last_cell.row
+    col_b = ws.range(f"B1:B{last_row}").value
+    if not isinstance(col_b, list):
+        col_b = [col_b]
+    for i, val in enumerate(col_b, start=1):
+        if val is None:
+            continue
+        formatted = val.strftime("%d/%m/%Y") if hasattr(val, "strftime") else str(val).strip()
+        if formatted == date_str:
+            return i
+    return None
+
+
+def _fill_with_xlwings(
+    win_path: str,
+    break_col: str,
+    reason_col: str,
     dates: List[date],
-    df: pd.DataFrame,
-    reasons: Optional[Dict[str, str]] = None,
-) -> str:
-    """Read the .xlsm, fill break intervals (G/L) and stop reasons (E/J), write back.
+    pos_df: pd.DataFrame,
+    reasons: dict,
+) -> tuple[int, list[str]]:
+    """Open the .xlsm with xlwings, write break/reason cells, save in place."""
+    import xlwings as xw
 
-    reasons: mapping of date.isoformat() → reason string (may be None or partial).
-    Returns a human-readable status string (success or error).
-    """
-    paths = _load_paths()
-    rel_path = paths.get(machine_id)
-    if not rel_path:
-        return f"No Excel path configured for {machine_id}."
+    filled = 0
+    skipped: list[str] = []
 
-    break_col = _POS_BREAK_COL.get(position)
-    reason_col = _POS_REASON_COL.get(position)
-    if not break_col or not reason_col:
-        return f"No column configured for position {position}."
+    xl_app = xw.App(visible=False, add_book=False)
+    try:
+        wb = xl_app.books.open(win_path)
+        try:
+            sheet_names = [s.name for s in wb.sheets]
+            for d in dates:
+                sheet_name = _MONTH_SHEET.get(d.month)
+                if not sheet_name or sheet_name not in sheet_names:
+                    skipped.append(f"{d.isoformat()} (sheet {sheet_name} not found)")
+                    continue
 
-    pos_df = df[df["position"] == position] if "position" in df.columns else df
-    reasons = reasons or {}
+                ws = wb.sheets[sheet_name]
+                date_str = d.strftime("%d/%m/%Y")
+                target_row = _find_date_row_xlwings(ws, date_str)
+
+                if target_row is None:
+                    skipped.append(f"{d.isoformat()} (date not found in sheet)")
+                    continue
+
+                break_str = detect_breaks(pos_df, d)
+                ws[f"{break_col}{target_row}"].value = break_str
+
+                reason = reasons.get(d.isoformat(), "")
+                ws[f"{reason_col}{target_row}"].value = reason
+
+                filled += 1
+                _log.info(
+                    "xlwings wrote %s row %d | break=%r reason=%r",
+                    date_str, target_row, break_str, reason,
+                )
+
+            wb.save()
+        finally:
+            wb.close()
+    finally:
+        xl_app.quit()
+
+    return filled, skipped
+
+
+def _extract_sheet_data_validations(raw_bytes: bytes) -> "dict[str, str]":
+    """Return {zip_entry_name: dataValidations_xml} for every worksheet that has one."""
+    validations: dict[str, str] = {}
+    with zipfile.ZipFile(io.BytesIO(raw_bytes)) as z:
+        for name in z.namelist():
+            if re.match(r"xl/worksheets/sheet\d+\.xml$", name):
+                content = z.read(name).decode("utf-8")
+                m = re.search(r"<dataValidations\b.*?</dataValidations>", content, re.DOTALL)
+                if m:
+                    validations[name] = m.group(0)
+    return validations
+
+
+def _restore_sheet_data_validations(saved_bytes: bytes, validations: "dict[str, str]") -> bytes:
+    """Put the original dataValidations blocks back into the saved workbook bytes."""
+    if not validations:
+        return saved_bytes
+    buf = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(saved_bytes)) as zin, \
+            zipfile.ZipFile(buf, "w") as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename in validations:
+                content = data.decode("utf-8")
+                dv_xml = validations[item.filename]
+                if "<dataValidations" in content:
+                    content = re.sub(
+                        r"<dataValidations\b.*?</dataValidations>",
+                        dv_xml,
+                        content,
+                        flags=re.DOTALL,
+                    )
+                else:
+                    content = content.replace("</worksheet>", dv_xml + "</worksheet>")
+                data = content.encode("utf-8")
+            zout.writestr(item, data)
+    return buf.getvalue()
+
+
+def _fill_with_openpyxl(
+    rel_path: str,
+    break_col: str,
+    reason_col: str,
+    dates: List[date],
+    pos_df: pd.DataFrame,
+    reasons: dict,
+) -> tuple[int, list[str]]:
+    """Fallback for non-Windows: read bytes, modify with openpyxl, write bytes back."""
+    filled = 0
+    skipped: list[str] = []
 
     try:
         raw_bytes = read_excel_bytes(rel_path)
     except Exception as exc:
         _log.error("Failed to read Excel %s: %s", rel_path, exc)
-        return f"Error reading file: {exc}"
+        raise
+
+    validations = _extract_sheet_data_validations(raw_bytes)
 
     try:
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), keep_vba=True)
-        wb._external_links = []  # Strip external links that openpyxl cannot round-trip
-                             # faithfully — prevents Excel's "repaired records" prompt.
-                             # Power BI connections are unaffected (stored in Power BI, not here).
     except ImportError:
-        return "openpyxl is not installed. Run: pip install openpyxl"
+        raise RuntimeError("openpyxl is not installed. Run: pip install openpyxl")
     except Exception as exc:
         _log.error("openpyxl failed to open %s: %s", rel_path, exc)
-        return f"Error opening workbook: {exc}"
+        raise
 
-    filled = 0
-    skipped = []
     for d in dates:
         sheet_name = _MONTH_SHEET.get(d.month)
         if not sheet_name or sheet_name not in wb.sheetnames:
@@ -192,8 +287,8 @@ def fill_occupation(
 
         filled += 1
         _log.info(
-            "Wrote occupation data for %s pos%d @ %s row %d | reason=%r",
-            machine_id, position, date_str, target_row, reason,
+            "openpyxl wrote %s row %d | break=%r reason=%r",
+            date_str, target_row, break_str, reason,
         )
 
     buf = io.BytesIO()
@@ -201,13 +296,46 @@ def fill_occupation(
         wb.save(buf)
     except Exception as exc:
         _log.error("openpyxl save failed: %s", exc)
-        return f"Error saving workbook: {exc}"
+        raise
+
+    final_bytes = _restore_sheet_data_validations(buf.getvalue(), validations)
+    write_excel_bytes(rel_path, final_bytes)
+    return filled, skipped
+
+
+def fill_occupation(
+    machine_id: str,
+    position: int,
+    dates: List[date],
+    df: pd.DataFrame,
+    reasons: Optional[Dict[str, str]] = None,
+) -> str:
+    """Read the .xlsm, fill break intervals (G/L) and stop reasons (E/J), write back.
+
+    reasons: mapping of date.isoformat() → reason string (may be None or partial).
+    Returns a human-readable status string (success or error).
+    """
+    paths = _load_paths()
+    rel_path = paths.get(machine_id)
+    if not rel_path:
+        return f"No Excel path configured for {machine_id}."
+
+    break_col = _POS_BREAK_COL.get(position)
+    reason_col = _POS_REASON_COL.get(position)
+    if not break_col or not reason_col:
+        return f"No column configured for position {position}."
+
+    pos_df = df[df["position"] == position] if "position" in df.columns else df
+    reasons = reasons or {}
 
     try:
-        write_excel_bytes(rel_path, buf.getvalue())
+        win_path = get_win_path(rel_path)
+        if win_path is not None:
+            filled, skipped = _fill_with_xlwings(win_path, break_col, reason_col, dates, pos_df, reasons)
+        else:
+            filled, skipped = _fill_with_openpyxl(rel_path, break_col, reason_col, dates, pos_df, reasons)
     except Exception as exc:
-        _log.error("Failed to write Excel %s: %s", rel_path, exc)
-        return f"Error writing file: {exc}"
+        return f"Error: {exc}"
 
     parts = [f"{filled} date(s) written successfully."]
     if skipped:
