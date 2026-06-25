@@ -11,10 +11,11 @@ A Plotly Dash app for loading and visualising tire test logs from the three test
 ## How the app works
 
 1. Type test numbers into the machine/position slots on the Live Monitor and click **Refresh**.
-2. The app finds the corresponding log file on the network share and parses it.
-3. Charts update immediately. At **:00 and :30 every hour**, charts reload automatically if auto-refresh is enabled.
-4. Filters (steps, ignore stopped, variable) only change what is shown — they never modify source files.
-5. Click the **clock icon** on any position card to open the Occupation Breaks dialog for that slot.
+2. Slot values are saved as you type and shared across users/sessions — anyone who opens the page (or reloads it) sees the same slots filled in, and just needs to click **Refresh** to load charts.
+3. The app finds the corresponding log file on the network share and parses it.
+4. Charts update immediately. At **:00 and :30 every hour**, charts reload automatically if auto-refresh is enabled.
+5. Filters (steps, ignore stopped, variable) only change what is shown — they never modify source files.
+6. Click the **clock icon** on any position card to open the Occupation Breaks dialog for that slot.
 
 ---
 
@@ -30,6 +31,17 @@ The app reads log files **directly from the network share** — no local copy is
 | Linux / Pergola | `//hjimssvip.tiretech.contiwan.com/hnv1-hs-ge-groups/prstruh/ctend_pt` — SMB direct read via `smbprotocol` |
 
 `PROJECT_ROOT` in `config.py` is set automatically based on `platform.system()`.
+
+### App data (read/write)
+
+The Test Registry and the Monitor tab's saved slot assignments persist to a **second, separate network share** (not the log share above), so the data survives Pergola redeploys instead of living on the container's disposable disk.
+
+| Platform | Source |
+|---|---|
+| Windows (local dev) | `O:\LOG-EVALUATION_CENTER\2-Operation\10-Resultados_Analises\Test_Monitoring_App` — mapped network drive |
+| Linux / Pergola | `//lofs010.tiretech2.contiwan.com/LOG-EVALUATION_CENTER/2-Operation/10-Resultados_Analises/Test_Monitoring_App` — SMB direct write via `smbprotocol` |
+
+Note this is a different server/domain (`tiretech2.contiwan.com`) than the log share (`tiretech.contiwan.com`).
 
 ### Log folder structure expected
 
@@ -57,22 +69,24 @@ Rules:
 | `SMB_SERVER` | Hostname of the log-file SMB server |
 | `SMB_SHARE` | Share name on that server |
 | `SMB_PATH` | Subfolder path within the share |
-| `TEST_REGISTRY_PATH` | `data/test_registry.json` — persisted list of active/planned tests |
+| `DATA_SMB_SERVER` / `DATA_SMB_SHARE` / `DATA_SMB_PATH` | Same idea, for the app-data share (registry + slot assignments) |
+| `TEST_REGISTRY_PATH` | Auto-set per platform — persisted list of active/planned tests |
+| `SLOT_ASSIGNMENTS_PATH` | Auto-set per platform — persisted Monitor tab slot → test number mapping |
 
-To change the log-file share, update `SMB_SERVER`, `SMB_SHARE`, `SMB_PATH`, and the Windows `PROJECT_ROOT` in `config.py`.
+To change the log-file share, update `SMB_SERVER`, `SMB_SHARE`, `SMB_PATH`, and the Windows `PROJECT_ROOT` in `config.py`. To change the app-data share, update the `DATA_SMB_*` constants and the Windows `_DATA_ROOT` the same way.
 
 ---
 
 ## Credentials (Linux / Pergola only)
 
-On Linux the app authenticates to the log-file SMB server using two environment variables injected by **Pergola Config Management**:
+On Linux the app authenticates to both SMB servers (log share and app-data share) using the same two environment variables injected by **Pergola Config Management**:
 
 - `GTT_SERVER_USER` — Conti domain username
 - `GTT_SERVER_PASS` — Conti domain password
 
-These are never stored in code or committed to Git. On Windows, the drive is already mapped via domain SSO — no environment variables needed.
+These are never stored in code or committed to Git. On Windows, both drives are already mapped via domain SSO — no environment variables needed.
 
-The SMB session is registered once at app startup. If credentials are missing or the connection fails, the app starts with a warning log and log loading will show an error until the issue is resolved.
+A separate SMB session is registered for each server once at app startup. If credentials are missing or a connection fails, the app starts anyway with a warning log — log loading or registry/slot persistence will show errors until the issue is resolved. The app-data share is on a different domain (`tiretech2.contiwan.com`) than the log share (`tiretech.contiwan.com`), so it's worth checking on first deploy that the same credentials authenticate against both.
 
 ---
 
@@ -92,12 +106,16 @@ Auto-refresh only applies to the **Live Monitor** tab.
 
 ## Test Registry
 
-The **Test Registry** (document icon next to "Current Tests Running") is a lightweight bookmarking tool. It persists to `data/test_registry.json` and survives app restarts.
+The **Test Registry** (document icon next to "Current Tests Running") is a lightweight bookmarking tool. It persists to `test_registry.json` on the app-data share (see [App data](#app-data-readwrite) above) and survives both app restarts and Pergola redeploys.
 
 - **Active** — tests currently being monitored
 - **Planned** — kept for reference
 
 The registry has no effect on which files are read or cached — it is purely informational. All users connected to the same server instance share the same registry. Changes are reflected immediately.
+
+## Monitor slot persistence
+
+The 6 test-number slots on the Live Monitor (`slot_machine.json` on the app-data share) work the same way: whatever you type is saved and shared, so anyone who opens the page — or you, after a refresh — sees the same slots already filled in, ready to click **Refresh**. Slots are always editable by anyone (last edit wins) and only clear when someone erases the text; there's no real-time push between already-open tabs.
 
 ---
 
@@ -144,7 +162,7 @@ port: 8050
 resources: 500m CPU / 1Gi memory
 ```
 
-To deploy: push to the repo and trigger a new build in Pergola. No volume mounts required — the app reads log files directly from the SMB share.
+To deploy: push to the repo and trigger a new build in Pergola. No volume mounts required — the app reads log files directly from the log SMB share, and persists the test registry and monitor slots directly to the app-data SMB share, so both survive the container being rebuilt from scratch on every deploy.
 
 ---
 
@@ -173,13 +191,13 @@ Monitoring_V1/
   pergola.yaml
   assets/
     style.css
-  data/
-    test_registry.json            ← gitignored, created at runtime
   domain/
     models.py                     ← shared data models / store shapes
   services/
     log_service.py                ← file lookup, parse caching, SMB variants
+    json_store.py                 ← platform-aware JSON read/write (local or SMB)
     test_registry.py              ← thread-safe, JSON-backed test list
+    slot_assignments.py           ← thread-safe, JSON-backed monitor slot map
     chart_utils.py
     data_utils.py
     filter_utils.py
@@ -225,6 +243,7 @@ Monitoring_V1/
   tests/
     test_monitor_data.py
     test_test_registry.py
+    test_slot_assignments.py
     test_sync_service.py
     test_occupation_excel.py      ← break detection unit tests (no SMB, no file I/O)
 ```
@@ -247,5 +266,5 @@ Monitoring_V1/
 
 - If a test is not found, verify the folder and file naming (`<TEST_NUMBER>.00a` / `<TEST_NUMBER>.log`).
 - If you change the log share location, update `SMB_SERVER`, `SMB_SHARE`, `SMB_PATH`, and the Windows `PROJECT_ROOT` in `config.py`.
-- The test registry (`data/test_registry.json`) is created automatically on first run.
+- The test registry and slot assignments JSON files live on the app-data share and are created automatically on first run if missing.
 - Available chart variables: Temperature, Load, Inflation Pressure, Room Temperature, Speed, Torque, Deflection.

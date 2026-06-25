@@ -47,7 +47,12 @@ def _input_id(machine_label: str, position: int) -> str:
     return f"test-input-{_machine_input_slug(machine_label)}-pos{position}"
 
 
-def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], str]) -> html.Div:
+def build_monitor_layout(
+    machines: List[str],
+    input_id_fn: Callable[[str, int], str],
+    initial_values: dict | None = None,
+) -> html.Div:
+    initial_values = initial_values or {}
     return html.Div(
         id="monitor-page",
         className="tab-page",
@@ -81,7 +86,7 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                                                                 className="test-input",
                                                                 placeholder="Test #",
                                                                 type="text",
-                                                                value="",
+                                                                value=initial_values.get(f"{machines[i]}|1", ""),
                                                                 debounce=True,
                                                             ),
                                                         ],
@@ -95,7 +100,7 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                                                                 className="test-input",
                                                                 placeholder="Test #",
                                                                 type="text",
-                                                                value="",
+                                                                value=initial_values.get(f"{machines[i]}|2", ""),
                                                                 debounce=True,
                                                             ),
                                                         ],
@@ -180,6 +185,7 @@ def build_monitor_layout(machines: List[str], input_id_fn: Callable[[str, int], 
                             dcc.Store(id="modal-open-store", data=False),
                             dcc.Store(id="modal-selection-store", data={}),
                             dcc.Store(id="png-export-state", data=0),
+                            dcc.Store(id="slot-persist-sink", data=0),
                             dcc.Download(id="modal-csv-download"),
                         ],
                     ),

@@ -1,40 +1,31 @@
 from __future__ import annotations
 
-import json
-import os
 import threading
 from typing import List
+
+from services.json_store import read_json, write_json
 
 
 class TestRegistry:
     def __init__(self, path: str) -> None:
         self._path = path
+        self._use_smb = path.startswith("//")
         self._lock = threading.Lock()
         self._entries: List[dict] = []
 
     def load(self) -> None:
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
-        if not os.path.exists(self._path):
-            self._entries = []
-            return
-        try:
-            with open(self._path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, list):
-                self._entries = [
-                    {"test_number": str(e["test_number"]), "status": str(e.get("status", "active"))}
-                    for e in data
-                    if isinstance(e, dict) and e.get("test_number")
-                ]
-            else:
-                self._entries = []
-        except Exception:
+        data = read_json(self._path, default=[], use_smb=self._use_smb)
+        if isinstance(data, list):
+            self._entries = [
+                {"test_number": str(e["test_number"]), "status": str(e.get("status", "active"))}
+                for e in data
+                if isinstance(e, dict) and e.get("test_number")
+            ]
+        else:
             self._entries = []
 
     def save(self) -> None:
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
-        with open(self._path, "w", encoding="utf-8") as f:
-            json.dump(self._entries, f, indent=2)
+        write_json(self._path, self._entries, use_smb=self._use_smb)
 
     def add(self, test_number: str, status: str = "active") -> None:
         test_number = test_number.strip()

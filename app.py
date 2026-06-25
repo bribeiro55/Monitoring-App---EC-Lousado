@@ -12,10 +12,12 @@ from flask_caching import Cache
 
 from config import (
     APP_ROOT,
+    DATA_SMB_SERVER,
     DISPLAY_TO_MACHINE_ID,
     MACHINE_BADGE,
     MACHINES,
     PROJECT_ROOT,
+    SLOT_ASSIGNMENTS_PATH,
     SMB_SERVER,
     STEP_COLORS,
     TEST_REGISTRY_PATH,
@@ -23,6 +25,7 @@ from config import (
 )
 from log_parser import parse_log_file, parse_log_header_metadata
 from services.test_registry import TestRegistry
+from services.slot_assignments import SlotAssignments
 
 from features.analysis.layout import build_analysis_layout
 from features.otkph import build_otkph_layout, register_otkph_callbacks
@@ -77,6 +80,16 @@ else:
             logging.getLogger(__name__).info("SMB session registered for %s", SMB_SERVER)
         except Exception as _e:
             logging.getLogger(__name__).warning("SMB session failed at startup: %s", _e)
+
+        try:
+            import smbclient as _smbc
+            _smbc.register_session(server=DATA_SMB_SERVER, username=_smb_user, password=_smb_pass)
+            logging.getLogger(__name__).info("SMB session registered for %s (data share)", DATA_SMB_SERVER)
+        except Exception as _e:
+            logging.getLogger(__name__).warning(
+                "SMB session failed at startup for %s (data share) — registry/slot persistence will fail "
+                "until this is resolved: %s", DATA_SMB_SERVER, _e,
+            )
     else:
         logging.getLogger(__name__).warning("GTT_SERVER_USER / GTT_SERVER_PASS not set — SMB reads will fail")
     _find_log_path = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)
@@ -87,8 +100,12 @@ else:
 registry = TestRegistry(TEST_REGISTRY_PATH)
 registry.load()
 
+slot_store = SlotAssignments(SLOT_ASSIGNMENTS_PATH)
+slot_store.load()
 
-app.layout = html.Div(
+
+def serve_layout():
+    return html.Div(
     children=[
         html.Div(
             className="topbar",
@@ -168,7 +185,7 @@ app.layout = html.Div(
         dcc.Store(id="auto-refresh-cycle-store", data={}),
         dcc.Store(id="auto-refresh-trigger-store", data=0),
         dcc.Interval(id="clock-interval", interval=1000, n_intervals=0),
-        build_monitor_layout(MACHINES, _input_id),
+        build_monitor_layout(MACHINES, _input_id, initial_values=slot_store.get_all()),
         html.Div(
             id="analysis-page",
             className="tab-page",
@@ -239,7 +256,10 @@ app.layout = html.Div(
             ],
         ),
     ],
-)
+    )
+
+
+app.layout = serve_layout
 
 register_monitor_callbacks(
     app,
@@ -253,6 +273,7 @@ register_monitor_callbacks(
     cached_parse_log=cached_parse_log,
     DISPLAY_TO_MACHINE_ID=DISPLAY_TO_MACHINE_ID,
     registry=registry,
+    slot_store=slot_store,
 )
 
 register_occupation_callbacks(

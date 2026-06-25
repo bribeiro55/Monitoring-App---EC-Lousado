@@ -13,6 +13,17 @@ if platform.system() == "Windows":
 else:
     PROJECT_ROOT = f"//{SMB_SERVER}/{SMB_SHARE}/{SMB_PATH}"
 
+# Second SMB server — durable app-data share (test registry + monitor slot assignments).
+# Different domain than the log-file SMB server above (tiretech2 vs tiretech).
+DATA_SMB_SERVER = "lofs010.tiretech2.contiwan.com"
+DATA_SMB_SHARE = "LOG-EVALUATION_CENTER"
+DATA_SMB_PATH = "2-Operation/10-Resultados_Analises/Test_Monitoring_App"
+
+if platform.system() == "Windows":
+    _DATA_ROOT = r"O:\LOG-EVALUATION_CENTER\2-Operation\10-Resultados_Analises\Test_Monitoring_App"
+else:
+    _DATA_ROOT = f"//{DATA_SMB_SERVER}/{DATA_SMB_SHARE}/{DATA_SMB_PATH}"
+
 MACHINES = ["Machine 7900", "Machine 7950", "Machine 7960"]
 POSITION_LABELS = {1: "Position 1", 2: "Position 2"}
 
@@ -124,4 +135,9 @@ LIMIT_PALETTE = ["#E84040", "#4A90D9", "#34C47C", "#E8721A", "#B36EE8"]
 BAND_UPPER_LINE_COLOR = LIMIT_PALETTE[0]
 BAND_LOWER_LINE_COLOR = LIMIT_PALETTE[1]
 
-TEST_REGISTRY_PATH = os.path.join(APP_ROOT, "data", "test_registry.json")
+if platform.system() == "Windows":
+    TEST_REGISTRY_PATH = os.path.join(_DATA_ROOT, "test_registry.json")
+    SLOT_ASSIGNMENTS_PATH = os.path.join(_DATA_ROOT, "slot_machine.json")
+else:
+    TEST_REGISTRY_PATH = f"{_DATA_ROOT}/test_registry.json"
+    SLOT_ASSIGNMENTS_PATH = f"{_DATA_ROOT}/slot_machine.json"

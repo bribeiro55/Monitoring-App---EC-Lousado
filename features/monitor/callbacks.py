@@ -35,6 +35,7 @@ def register_monitor_callbacks(
     cached_parse_log,
     DISPLAY_TO_MACHINE_ID,
     registry=None,
+    slot_store=None,
 ) -> None:
     _input_id = input_id_fn
 
@@ -205,6 +206,32 @@ def register_monitor_callbacks(
 
         # Close enlarged view on manual refresh; user must click Expand again to open it.
         return loaded, False, {}
+
+
+    @app.callback(
+        Output("slot-persist-sink", "data"),
+        Input(_input_id(MACHINES[0], 1), "value"),
+        Input(_input_id(MACHINES[0], 2), "value"),
+        Input(_input_id(MACHINES[1], 1), "value"),
+        Input(_input_id(MACHINES[1], 2), "value"),
+        Input(_input_id(MACHINES[2], 1), "value"),
+        Input(_input_id(MACHINES[2], 2), "value"),
+        prevent_initial_call=True,
+    )
+    def persist_slot_inputs(tA1, tA2, tB1, tB2, tC1, tC2):
+        if slot_store is None:
+            raise PreventUpdate
+        slot_store.set_many(
+            {
+                f"{MACHINES[0]}|1": tA1,
+                f"{MACHINES[0]}|2": tA2,
+                f"{MACHINES[1]}|1": tB1,
+                f"{MACHINES[1]}|2": tB2,
+                f"{MACHINES[2]}|1": tC1,
+                f"{MACHINES[2]}|2": tC2,
+            }
+        )
+        return no_update
 
 
     @app.callback(
