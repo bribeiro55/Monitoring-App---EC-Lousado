@@ -15,7 +15,6 @@ from config import (
     DISPLAY_TO_MACHINE_ID,
     MACHINE_BADGE,
     MACHINES,
-    OCCUPATION_SMB_SERVER,
     PROJECT_ROOT,
     SMB_SERVER,
     STEP_COLORS,
@@ -78,11 +77,6 @@ else:
             logging.getLogger(__name__).info("SMB session registered for %s", SMB_SERVER)
         except Exception as _e:
             logging.getLogger(__name__).warning("SMB session failed at startup: %s", _e)
-        try:
-            _smbc.register_session(server=OCCUPATION_SMB_SERVER, username=_smb_user, password=_smb_pass)
-            logging.getLogger(__name__).info("SMB session registered for %s", OCCUPATION_SMB_SERVER)
-        except Exception as _e:
-            logging.getLogger(__name__).warning("Occupation SMB session failed at startup: %s", _e)
     else:
         logging.getLogger(__name__).warning("GTT_SERVER_USER / GTT_SERVER_PASS not set — SMB reads will fail")
     _find_log_path = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)

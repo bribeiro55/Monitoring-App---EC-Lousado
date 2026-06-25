@@ -4,5 +4,4 @@ __pycache__/
 .pytest_cache/
 logs/
 data/test_registry.json
-occupation_paths.json
 *.pyc

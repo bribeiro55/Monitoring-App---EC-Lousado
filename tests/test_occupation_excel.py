@@ -3,9 +3,8 @@
 from datetime import date, datetime
 
 import pandas as pd
-import pytest
 
-from features.monitor.occupation.excel_writer import detect_breaks, dates_in_range, save_paths
+from features.monitor.occupation.excel_writer import detect_breaks, dates_in_range
 
 
 def _make_df(rows: list[tuple]) -> pd.DataFrame:
@@ -39,7 +38,7 @@ class TestDetectBreaks:
         assert result == "Break:09:00-10:00"
 
     def test_multiple_breaks(self):
-        """Two separate zero-speed intervals → two Break: lines joined by \\n."""
+        """Two separate zero-speed intervals → two Break: entries joined by a space."""
         df = _make_df([
             (_ts(8, 0),  10.0, 1),
             (_ts(9, 0),   0.0, 1),
@@ -48,7 +47,7 @@ class TestDetectBreaks:
             (_ts(10, 45), 10.0, 1),
         ])
         result = detect_breaks(df, TARGET)
-        assert result == "Break:09:00-09:30\nBreak:10:00-10:45"
+        assert result == "Break:09:00-09:30 Break:10:00-10:45"
 
     def test_no_zeros(self):
         """speed never 0 → empty string."""
@@ -109,17 +108,3 @@ class TestDatesInRange:
 
     def test_end_before_start(self):
         assert dates_in_range(date(2026, 6, 5), date(2026, 6, 4)) == []
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# save_paths validation
-# ──────────────────────────────────────────────────────────────────────────────
-
-class TestSavePathsValidation:
-    def test_empty_path_raises(self):
-        with pytest.raises(ValueError, match="empty"):
-            save_paths({"M7900": "", "M7950": "valid.xlsm", "M7960": "valid.xlsm"})
-
-    def test_wrong_extension_raises(self):
-        with pytest.raises(ValueError, match=".xlsm"):
-            save_paths({"M7900": "file.xlsx", "M7950": "valid.xlsm", "M7960": "valid.xlsm"})
