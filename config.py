@@ -16,8 +16,8 @@ else:
 # Second SMB server — durable app-data share (test registry + monitor slot assignments).
 # Different domain than the log-file SMB server above (tiretech2 vs tiretech).
 DATA_SMB_SERVER = "lofs010.tiretech2.contiwan.com"
-DATA_SMB_SHARE = "LOG-EVALUATION_CENTER"
-DATA_SMB_PATH = "2-Operation/10-Resultados_Analises/Test_Monitoring_App"
+DATA_SMB_SHARE = "cmip_groups"
+DATA_SMB_PATH = "LOG-EVALUATION_CENTER/2-Operation/10-Resultados_Analises/Test_Monitoring_App"
 
 if platform.system() == "Windows":
     _DATA_ROOT = r"O:\LOG-EVALUATION_CENTER\2-Operation\10-Resultados_Analises\Test_Monitoring_App"
