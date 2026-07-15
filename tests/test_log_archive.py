@@ -15,7 +15,7 @@ def _make_test_tree(root: Path, test_number: str) -> Path:
     return folder
 
 
-def test_copy_test_folder_copies_all_files(tmp_path):
+def test_copy_test_folder_copies_only_the_log_file(tmp_path):
     src_root = tmp_path / "prstruh"
     dest_root = tmp_path / "logs"
     src_folder = _make_test_tree(src_root, "12345")
@@ -24,11 +24,11 @@ def test_copy_test_folder_copies_all_files(tmp_path):
 
     dest_folder = dest_root / "12345.00a"
     assert result.error is None
-    assert result.copied_files == 3
+    assert result.copied_files == 1
     assert result.dest_folder == str(dest_folder)
     assert (dest_folder / "12345.log").read_text() == "data"
-    assert (dest_folder / "extra_channel.csv").read_text() == "a,b,c"
-    assert (dest_folder / "sub" / "nested.txt").read_text() == "nested"
+    # Only the .log file is copied — everything else in the source folder is left behind.
+    assert sorted(p.name for p in dest_folder.iterdir()) == ["12345.log"]
 
 
 def test_copy_test_folder_does_not_touch_source(tmp_path):

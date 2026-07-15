@@ -70,6 +70,7 @@ def register_end_test_callbacks(
     # ------------------------------------------------------------------ #
     @app.callback(
         Output("end-confirm-status", "children", allow_duplicate=True),
+        Output("end-confirm-overlay", "className", allow_duplicate=True),
         Input("end-confirm-yes-btn", "n_clicks"),
         State("end-confirm-slot-store", "data"),
         State("loaded-logs-store", "data"),
@@ -91,14 +92,17 @@ def register_end_test_callbacks(
         entry = (loaded_logs or {}).get(slot) or {}
         log_path = (entry.get("load_debug") or {}).get("log_path")
         if not log_path:
-            return "✗ No log file loaded for this position."
+            return "✗ No log file loaded for this position.", no_update
 
         try:
             result = copy_test_folder(log_path, dest_root)
         except Exception as e:
             _log.exception("Failed to copy test folder for slot %s", slot)
-            return f"✗ Copy failed: {e}"
+            return f"✗ Copy failed: {e}", no_update
 
         if result.error:
-            return f"✗ Copy failed: {result.error}"
-        return f"✓ Copied {result.copied_files} file(s) to archive."
+            return f"✗ Copy failed: {result.error}", no_update
+
+        # Success — close the dialog automatically. On failure, leave it open
+        # with the error message so the user can see what went wrong.
+        return "✓ Copied to archive.", "modal-overlay"
