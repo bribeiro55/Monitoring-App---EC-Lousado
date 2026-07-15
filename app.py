@@ -7,7 +7,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
 
-from dash import Dash, dcc, html
+import diskcache
+from dash import Dash, DiskcacheManager, dcc, html
 from flask_caching import Cache
 
 from config import (
@@ -56,7 +57,15 @@ from features.monitor.icons import (
 )
 
 
-app = Dash(__name__, assets_folder="assets", suppress_callback_exceptions=True)
+_background_cache = diskcache.Cache(os.path.join(APP_ROOT, ".diskcache"))
+background_callback_manager = DiskcacheManager(_background_cache)
+
+app = Dash(
+    __name__,
+    assets_folder="assets",
+    suppress_callback_exceptions=True,
+    background_callback_manager=background_callback_manager,
+)
 server = app.server
 cache = Cache(
     server,

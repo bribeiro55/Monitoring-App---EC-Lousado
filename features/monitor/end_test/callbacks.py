@@ -73,6 +73,11 @@ def register_end_test_callbacks(
         Input("end-confirm-yes-btn", "n_clicks"),
         State("end-confirm-slot-store", "data"),
         State("loaded-logs-store", "data"),
+        background=True,
+        running=[
+            (Output("end-confirm-yes-btn", "disabled"), True, False),
+            (Output("end-confirm-status", "children"), "Copying…", no_update),
+        ],
         prevent_initial_call=True,
     )
     def confirm_end_test(n_clicks, slot_data, loaded_logs):
