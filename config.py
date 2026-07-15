@@ -15,6 +15,7 @@ else:
 
 # Second SMB server — durable app-data share (test registry + monitor slot assignments).
 # Different domain than the log-file SMB server above (tiretech2 vs tiretech).
+# Share is "cmip_groups" — LOG-EVALUATION_CENTER is a folder inside it, not the share itself.
 DATA_SMB_SERVER = "lofs010.tiretech2.contiwan.com"
 DATA_SMB_SHARE = "cmip_groups"
 DATA_SMB_PATH = "LOG-EVALUATION_CENTER/2-Operation/10-Resultados_Analises/Test_Monitoring_App"
@@ -23,6 +24,13 @@ if platform.system() == "Windows":
     _DATA_ROOT = r"O:\LOG-EVALUATION_CENTER\2-Operation\10-Resultados_Analises\Test_Monitoring_App"
 else:
     _DATA_ROOT = f"//{DATA_SMB_SERVER}/{DATA_SMB_SHARE}/{DATA_SMB_PATH}"
+
+# Archive destination for "End Test" log copies, and second-choice search location
+# when a test number can't be found on prstruh.
+if platform.system() == "Windows":
+    LOGS_DEST_ROOT = os.path.join(_DATA_ROOT, "Logs")
+else:
+    LOGS_DEST_ROOT = f"{_DATA_ROOT}/Logs"
 
 MACHINES = ["Machine 7900", "Machine 7950", "Machine 7960"]
 POSITION_LABELS = {1: "Position 1", 2: "Position 2"}

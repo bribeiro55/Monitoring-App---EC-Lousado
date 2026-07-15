@@ -5,6 +5,7 @@ from typing import Callable, List
 from dash import dcc, html
 
 from features.monitor.auto_refresh.layout import make_auto_refresh_banner, make_auto_refresh_toggle
+from features.monitor.end_test.layout import make_end_confirm_modal
 from features.monitor.figures import _blank_figure
 from features.monitor.icons import _ICON_CSV, _ICON_DOWNLOAD, ICON_SYNC
 from features.monitor.occupation.layout import make_occupation_modal
@@ -29,6 +30,21 @@ def make_expand_button(slot_key: str, icon_src: str | None = None) -> html.Butto
         className="expand-btn",
         title="Expand",
         id={"type": "expand-btn", "slot": slot_key},
+        children=[
+            html.Img(
+                src=icon_src,
+                alt="",
+                style={"width": "13px", "height": "13px", "display": "block"},
+            )
+        ],
+    )
+
+
+def make_end_button(slot_key: str, icon_src: str | None = None) -> html.Button:
+    return html.Button(
+        className="end-btn",
+        title="End",
+        id={"type": "end-btn", "slot": slot_key},
         children=[
             html.Img(
                 src=icon_src,
@@ -207,6 +223,7 @@ def build_monitor_layout(
                     html.Div(id="graphs-section-label", className="section-label", children=["Temperature Over Time"]),
                     html.Div(id="charts-grid", className="charts-grid"),
                     make_occupation_modal(),
+                    make_end_confirm_modal(),
                     html.Div(
                         id="modal-overlay",
                         className="modal-overlay",

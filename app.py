@@ -14,6 +14,7 @@ from config import (
     APP_ROOT,
     DATA_SMB_SERVER,
     DISPLAY_TO_MACHINE_ID,
+    LOGS_DEST_ROOT,
     MACHINE_BADGE,
     MACHINES,
     PROJECT_ROOT,
@@ -26,6 +27,7 @@ from config import (
 from log_parser import parse_log_file, parse_log_header_metadata
 from services.test_registry import TestRegistry
 from services.slot_assignments import SlotAssignments
+from services.log_archive import copy_test_folder, copy_test_folder_smb
 
 from features.analysis.layout import build_analysis_layout
 from features.otkph import build_otkph_layout, register_otkph_callbacks
@@ -40,6 +42,7 @@ from services.log_service import (
 
 from features.monitor.auto_refresh import register_monitor_auto_refresh_callbacks
 from features.monitor.callbacks import register_monitor_callbacks
+from features.monitor.end_test.callbacks import register_end_test_callbacks
 from features.monitor.occupation.callbacks import register_occupation_callbacks
 from features.navigation.callbacks import register_navigation_callbacks
 from features.analysis.callbacks import register_analysis_callbacks
@@ -66,10 +69,12 @@ cache = Cache(
 os.makedirs(os.path.join(APP_ROOT, ".cache"), exist_ok=True)
 
 if platform.system() == "Windows":
-    _find_log_path = lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT)
+    _find_log_path_primary = lambda tn: find_log_path_for_test_number(tn, PROJECT_ROOT)
+    _find_log_path_fallback = lambda tn: find_log_path_for_test_number(tn, LOGS_DEST_ROOT)
     _parse_log_fn = parse_log_file
     _parse_meta_fn = parse_log_header_metadata
     cached_parse_log = build_cached_parse_log(cache, _parse_log_fn)
+    _copy_test_folder = copy_test_folder
 else:
     _smb_user = os.environ.get("GTT_SERVER_USER", "")
     _smb_pass = os.environ.get("GTT_SERVER_PASS", "")
@@ -92,10 +97,15 @@ else:
             )
     else:
         logging.getLogger(__name__).warning("GTT_SERVER_USER / GTT_SERVER_PASS not set — SMB reads will fail")
-    _find_log_path = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)
+    _find_log_path_primary = lambda tn: find_log_path_smb(tn, PROJECT_ROOT)
+    _find_log_path_fallback = lambda tn: find_log_path_smb(tn, LOGS_DEST_ROOT)
     _parse_log_fn = parse_log_file_smb
     _parse_meta_fn = parse_log_header_metadata_smb
     cached_parse_log = build_cached_parse_log_smb(cache, _parse_log_fn)
+    _copy_test_folder = copy_test_folder_smb
+
+def _find_log_path(tn):
+    return _find_log_path_primary(tn) or _find_log_path_fallback(tn)
 
 registry = TestRegistry(TEST_REGISTRY_PATH)
 registry.load()
@@ -283,6 +293,12 @@ register_occupation_callbacks(
     input_id_fn=_input_id,
     find_log_path=_find_log_path,
     cached_parse_log=cached_parse_log,
+)
+
+register_end_test_callbacks(
+    app,
+    copy_test_folder=_copy_test_folder,
+    dest_root=LOGS_DEST_ROOT,
 )
 
 register_monitor_auto_refresh_callbacks(

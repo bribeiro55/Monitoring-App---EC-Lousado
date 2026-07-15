@@ -473,6 +473,13 @@ body {
   transition: all 0.15s; display: flex; align-items: center;
 }
 .expand-btn:hover { border-color: var(--gold); color: var(--gold); }
+.end-btn {
+  background: none; border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 4px 6px;
+  cursor: pointer; color: var(--muted);
+  transition: all 0.15s; display: flex; align-items: center;
+}
+.end-btn:hover { border-color: var(--gold); color: var(--gold); }
 .chart-inline-stats {
   display: flex;
   align-items: center;
@@ -591,6 +598,23 @@ body {
 }
 .modal-close:hover { background: var(--border); color: var(--text); }
 .modal-chart { height: 380px; }
+
+.confirm-actions {
+  display: flex; justify-content: flex-end; gap: 10px;
+}
+.confirm-btn {
+  border-radius: 8px; padding: 8px 18px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.confirm-btn-no {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+}
+.confirm-btn-no:hover { background: var(--border); }
+.confirm-btn-yes {
+  background: var(--gold); border: 1px solid var(--gold); color: #1A1C22;
+}
+.confirm-btn-yes:hover { filter: brightness(1.08); }
 
 /* ── Step shading legend ── */
 .step-legend {

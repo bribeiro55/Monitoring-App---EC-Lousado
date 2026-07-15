@@ -58,6 +58,11 @@ ICON_REGISTRY = _svg_data_uri(
     'viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
     '<path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>'
 )
+_ICON_END = _svg_data_uri(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" '
+    'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
+    'viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>'
+)
 ICON_SYNC = _svg_data_uri(
     '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" '
     'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" '
