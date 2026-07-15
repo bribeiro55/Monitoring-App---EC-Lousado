@@ -42,10 +42,17 @@ def make_end_confirm_modal() -> html.Div:
                     html.Div(
                         style={"padding": "16px 20px", "display": "flex", "flexDirection": "column", "gap": "14px"},
                         children=[
-                            html.Div(
-                                id="end-confirm-status",
-                                style={"fontSize": "12px", "color": "var(--muted)", "minHeight": "18px"},
-                                children=[],
+                            dcc.Loading(
+                                type="circle",
+                                color="#F0BA20",
+                                delay_show=120,
+                                children=[
+                                    html.Div(
+                                        id="end-confirm-status",
+                                        style={"fontSize": "12px", "color": "var(--muted)", "minHeight": "18px"},
+                                        children=[],
+                                    ),
+                                ],
                             ),
                             html.Div(
                                 className="confirm-actions",
